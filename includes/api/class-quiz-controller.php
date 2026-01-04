@@ -61,6 +61,16 @@ class Quiz_Controller extends WP_REST_Controller {
             ]
         );
 
+        register_rest_route(
+            $this->namespace,
+            '/submit-email',
+            [
+                'methods'             => 'POST',
+                'callback'            => [ $this, 'submit_email_report' ],
+                'permission_callback' => '__return_true', // Public endpoint
+            ]
+        );
+
         // Single quiz operations (GET, DELETE, UPDATE)
         register_rest_route(
             $this->namespace,
@@ -157,6 +167,9 @@ class Quiz_Controller extends WP_REST_Controller {
             'date'  => $post->post_date,
             'meta'  => [
                 '_smc_quiz_questions' => get_post_meta( $post->ID, '_smc_quiz_questions', true ) ?: [],
+                '_smc_quiz_settings'  => get_post_meta( $post->ID, '_smc_quiz_settings', true ) ?: [],
+                '_smc_quiz_dashboard_config' => get_post_meta( $post->ID, '_smc_quiz_dashboard_config', true ) ?: [],
+                '_smc_quiz_stages' => get_post_meta( $post->ID, '_smc_quiz_stages', true ) ?: [],
             ],
         ];
     }
@@ -220,6 +233,21 @@ class Quiz_Controller extends WP_REST_Controller {
 			update_post_meta( $post_id, '_smc_quiz_questions', $questions );
 		}
 
+        $settings = $request->get_param( 'settings' );
+        if ( isset( $settings ) ) {
+            update_post_meta( $post_id, '_smc_quiz_settings', $settings );
+        }
+
+        $dashboard_config = $request->get_param( 'dashboard_config' );
+        if ( isset( $dashboard_config ) ) {
+            update_post_meta( $post_id, '_smc_quiz_dashboard_config', $dashboard_config );
+        }
+        
+        $stages = $request->get_param( 'stages' );
+        if ( isset( $stages ) ) {
+            update_post_meta( $post_id, '_smc_quiz_stages', $stages );
+        }
+
 		$post = get_post( $post_id );
 		return rest_ensure_response( $this->prepare_item_for_response( $post, $request ) );
 	}
@@ -240,6 +268,9 @@ class Quiz_Controller extends WP_REST_Controller {
 
         $title     = sanitize_text_field( $request->get_param( 'title' ) );
         $questions = $request->get_param( 'questions' );
+        $settings  = $request->get_param( 'settings' );
+        $dashboard_config = $request->get_param( 'dashboard_config' );
+        $stages = $request->get_param( 'stages' );
 
         // Update title if provided
         if ( ! empty( $title ) ) {
@@ -252,6 +283,21 @@ class Quiz_Controller extends WP_REST_Controller {
         // Update questions meta if provided
         if ( isset( $questions ) && is_array( $questions ) ) {
             update_post_meta( $id, '_smc_quiz_questions', $questions );
+        }
+
+        // Update settings
+        if ( isset( $settings ) ) {
+            update_post_meta( $id, '_smc_quiz_settings', $settings );
+        }
+
+        // Update dashboard config
+        if ( isset( $dashboard_config ) ) {
+            update_post_meta( $id, '_smc_quiz_dashboard_config', $dashboard_config );
+        }
+
+        // Update stages
+        if ( isset( $stages ) ) {
+            update_post_meta( $id, '_smc_quiz_stages', $stages );
         }
 
         $post = get_post( $id );
@@ -310,5 +356,73 @@ class Quiz_Controller extends WP_REST_Controller {
         }
 
         return rest_ensure_response( [ 'deleted' => true, 'id' => $id ] );
+    }
+
+    /**
+     * Handle Email Submission with Report.
+     *
+     * @param \WP_REST_Request $request Full data about the request.
+     * @return \WP_REST_Response|\WP_Error
+     */
+    public function submit_email_report( $request ) {
+        $parameters = $request->get_file_params();
+        $params     = $request->get_params();
+        
+        $name  = sanitize_text_field( $params['name'] ?? '' );
+        $email = sanitize_email( $params['email'] ?? '' );
+        $phone = sanitize_text_field( $params['phone'] ?? '' );
+        $quiz_id = (int) ( $params['quiz_id'] ?? 0 );
+
+        if ( empty( $email ) || ! is_email( $email ) ) {
+            return new WP_Error( 'invalid_email', __( 'Valid email required.', 'smc-viable' ), [ 'status' => 400 ] );
+        }
+
+        if ( empty( $parameters['report'] ) ) {
+            return new WP_Error( 'missing_file', __( 'Report file is missing.', 'smc-viable' ), [ 'status' => 400 ] );
+        }
+
+        $file = $parameters['report'];
+        
+        // Basic Security Check on File
+        if ( $file['type'] !== 'application/pdf' ) {
+             return new WP_Error( 'invalid_file', __( 'Only PDF allowed.', 'smc-viable' ), [ 'status' => 400 ] );
+        }
+
+        // Email logic
+        $subject = sprintf( __( 'Your Assessment Results - %s', 'smc-viable' ), get_bloginfo( 'name' ) );
+        $message = sprintf( __( "Hi %s,\n\nHere is your assessment report attached.\n\nBest,\n%s", 'smc-viable' ), $name, get_bloginfo( 'name' ) );
+        $headers = [ 'Content-Type: text/plain; charset=UTF-8' ];
+        
+        // Use the tmp file directly for attachment
+        $attachments = [ $file['tmp_name'] ];
+        
+        // We need to rename it to have .pdf extension for mailer potentially, or rely on mailer handling tmp file.
+        // WP_Mail usually expects file path.
+        // It's safer to move it to a temp dir with correct name.
+        $upload_dir = wp_upload_dir();
+        $temp_path = $upload_dir['basedir'] . '/smc_reports/';
+        if ( ! file_exists( $temp_path ) ) {
+            mkdir( $temp_path, 0755, true );
+        }
+        
+        $new_file_path = $temp_path . 'report_' . time() . '.pdf';
+        if ( move_uploaded_file( $file['tmp_name'], $new_file_path ) ) {
+             $sent = wp_mail( $email, $subject, $message, $headers, [ $new_file_path ] );
+             unlink( $new_file_path ); // Cleanup
+             
+             if ( $sent ) {
+                 // Notify Admin as well? User requirement: "admin can ask for email... report"
+                 // Maybe send copy to admin?
+                 $admin_email = get_option( 'admin_email' );
+                 $admin_message = sprintf( "New lead generated:\nName: %s\nEmail: %s\nPhone: %s\nQuiz ID: %d", $name, $email, $phone, $quiz_id );
+                 wp_mail( $admin_email, "New Assessment Submission: $name", $admin_message );
+
+                 return rest_ensure_response( [ 'success' => true, 'message' => __( 'Report sent successfully.', 'smc-viable' ) ] );
+             } else {
+                 return new WP_Error( 'mail_failed', __( 'Failed to send email.', 'smc-viable' ), [ 'status' => 500 ] );
+             }
+        }
+
+        return new WP_Error( 'upload_failed', __( 'Failed to process report file.', 'smc-viable' ), [ 'status' => 500 ] );
     }
 }

@@ -1,0 +1,70 @@
+{
+  "version": "1.0.0",
+  "dashboard_config": {
+    "title": "Business Viability Assessment Results",
+    "rules": [
+      {
+        "id": "rule_1",
+        "condition_text": "Greater than 140",
+        "logic": {
+          "operator": "gt",
+          "value": 140,
+          "min": 141,
+          "max": null
+        },
+        "message": "Your Business Idea is Brilliant! Share it with honest and well intentioned partners and investors and get going!!!",
+        "style": {
+          "color": "green",
+          "variant": "success",
+          "icon": "star"
+        }
+      },
+      {
+        "id": "rule_2",
+        "condition_text": "Between 90 and 140",
+        "logic": {
+          "operator": "between",
+          "min": 90,
+          "max": 140
+        },
+        "message": "Your Business Idea is Good! It is safe to start, but continue working on the low scores (in orange and red) to make it Brilliant! (dark green).",
+        "style": {
+          "color": "light-green",
+          "variant": "success-light",
+          "icon": "check"
+        }
+      },
+      {
+        "id": "rule_3",
+        "condition_text": "Between 60 and 89",
+        "logic": {
+          "operator": "between",
+          "min": 60,
+          "max": 89
+        },
+        "message": "Your Business Idea is not yet a good idea. Objectively work on the low scores (in orange and red) to make it Good (green)!",
+        "style": {
+          "color": "orange",
+          "variant": "warning",
+          "icon": "alert"
+        }
+      },
+      {
+        "id": "rule_4",
+        "condition_text": "Less than 60",
+        "logic": {
+          "operator": "lt",
+          "value": 60,
+          "min": null,
+          "max": 59
+        },
+        "message": "Your Business Idea is not viable. Objectively work on the low scores (in orange and red) to make it Good (green)!",
+        "style": {
+          "color": "red",
+          "variant": "danger",
+          "icon": "x"
+        }
+      }
+    ]
+  }
+}

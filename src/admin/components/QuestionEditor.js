@@ -14,27 +14,25 @@ import { useState, useEffect } from '@wordpress/element';
  * 
  * @param {Object} props Props.
  * @param {Object} props.question Question object.
+ * @param {Array} props.stages Array of available stages from QuizEditor config.
  * @param {Function} props.onChange Callback to update question.
  * @param {Function} props.onRemove Callback to remove question.
  */
-export default function QuestionEditor({ question, onChange, onRemove, isOpen, onClose }) {
+export default function QuestionEditor({ question, onChange, onRemove, isOpen, onClose, stages = [] }) {
     const {
         type = 'select',
         text = '',
-        stage = 'Market & Offering',
+        stage = '',
         indicator = '',
         key_text = '',
         guidance = '',
         options = []
     } = question;
 
-    const stages = [
-        "Foundation & Legal",
-        "Market & Offering",
-        "Operational Strategy & Capability",
-        "Financial Health & Economics",
-        "Investment & Future Readiness"
-    ];
+    // Use passed stages, or fallback if empty (should prevent crash, QuizEditor ensures default)
+    const availableStages = stages && stages.length > 0
+        ? stages
+        : ["Market & Offering", "Business Model", "Execution"]; // Fallback just in case
 
     const types = [
         { label: 'Dropdown (Scorable)', value: 'select' },
@@ -85,7 +83,8 @@ export default function QuestionEditor({ question, onChange, onRemove, isOpen, o
                             value={stage}
                             onChange={(e) => updateQuestion('stage', e.target.value)}
                         >
-                            {stages.map(s => <option key={s} value={s}>{s}</option>)}
+                            {!stage && <option value="">Select Stage...</option>}
+                            {availableStages.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
                     </div>
 
