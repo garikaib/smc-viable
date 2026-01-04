@@ -158,7 +158,7 @@ export default function ResultsDashboard({ answers, quiz }) {
                                 <ul className="list-disc list-inside text-sm space-y-1">
                                     {flaggedItems.map((item, idx) => (
                                         <li key={idx} className="text-error font-medium">
-                                            {item.indicator}
+                                            {item.indicator || item.text}
                                         </li>
                                     ))}
                                 </ul>
