@@ -185,7 +185,7 @@ final class SMC_Quiz_Plugin {
 		
 		wp_enqueue_style(
 			'smc-quiz-view',
-			plugins_url( 'build/view.css', __FILE__ ),
+			plugins_url( 'build/style-view.css', __FILE__ ),
 			[],
 			$asset_file['version']
 		);
@@ -237,7 +237,7 @@ final class SMC_Quiz_Plugin {
 		
 		wp_enqueue_style(
 			'smc-quiz-view',
-			plugins_url( 'build/view.css', __FILE__ ),
+			plugins_url( 'build/style-view.css', __FILE__ ),
 			[],
 			$asset_file['version']
 		);
