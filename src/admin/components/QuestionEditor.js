@@ -109,7 +109,7 @@ export default function QuestionEditor({ question, onChange, onRemove, isOpen, o
                         <input
                             type="text"
                             className="input input-bordered w-full"
-                            value={indicator}
+                            value={indicator || stage}
                             onChange={(e) => updateQuestion('indicator', e.target.value)}
                             placeholder="e.g. Market Readiness"
                         />
