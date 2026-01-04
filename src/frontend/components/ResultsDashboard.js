@@ -119,6 +119,15 @@ export default function ResultsDashboard({ answers, quiz }) {
         return 'badge-success';
     };
 
+    const getScoreColorHex = (percent) => {
+        if (percent >= 80) return '#16a34a'; // Success (Green)
+        if (percent >= 60) return '#0284c7'; // Info (Blue)
+        if (percent >= 40) return '#d97706'; // Warning (Orange)
+        return '#dc2626'; // Error (Red)
+    };
+
+    const overallColor = getScoreColorHex(readinessRating.percent);
+
     return (
         <div className="smc-results-dashboard animate-fade-in space-y-8">
 
@@ -131,7 +140,7 @@ export default function ResultsDashboard({ answers, quiz }) {
                         <h3 className="card-title justify-center">{__('Overall Readiness', 'smc-viable')}</h3>
 
                         <div className="radial-progress mx-auto my-4 text-primary"
-                            style={{ "--value": readinessRating.percent, "--size": "8rem", "--thickness": "0.8rem" }}>
+                            style={{ "--value": readinessRating.percent, "--size": "8rem", "--thickness": "0.8rem", color: overallColor }}>
                             <span className="text-3xl font-bold text-base-content">{readinessRating.percent}%</span>
                         </div>
 
@@ -192,7 +201,9 @@ export default function ResultsDashboard({ answers, quiz }) {
                                     <td className="font-medium">{stageName}</td>
                                     <td>
                                         <div className="flex items-center gap-2">
-                                            <progress className="progress progress-primary w-24" value={data.total} max={data.max || 1}></progress>
+                                            <progress className="progress w-24" value={data.total} max={data.max || 1}
+                                                style={{ color: getScoreColorHex((data.total / (data.max || 1)) * 100) }}
+                                            ></progress>
                                             <span className="text-xs">{data.total}/{data.max}</span>
                                         </div>
                                     </td>
@@ -224,31 +235,26 @@ export default function ResultsDashboard({ answers, quiz }) {
                 </Button>
             </div>
 
-            {/* Hidden Report for PDF Generation - using inline HEX colors for html2canvas compatibility
-                Using z-index and absolute positioning instead of far-off-screen to ensure rendering.
-             */}
+            {/* Hidden Report for PDF Generation */}
             <div
                 className="absolute top-0 left-0 w-[210mm] min-h-[297mm] p-10 font-sans bg-white text-black -z-50 invisible"
                 ref={reportRef}
-                style={{ visibility: isExporting ? 'visible' : 'hidden' }} // Only make visible to DOM/Capturer during export if needed, or keep 'visible' but behind. 
-            // html-to-image needs it to be rendered. 'visibility: hidden' might block it.
-            // Let's try z-index -50 and opacity 0? No, opacity might affect capture.
-            // Best: Absolute 0,0, z-index -50.
+                style={{ visibility: isExporting ? 'visible' : 'hidden' }}
             >
-                <div className="flex justify-between items-start pb-4 mb-8 border-b-2" style={{ borderColor: '#b91c1c' }}>
-                    <h1 className="text-3xl font-bold" style={{ color: '#15803d' }}>{__('Readiness Report', 'smc-viable')}</h1>
+                <div className="flex justify-between items-start pb-4 mb-8 border-b-2" style={{ borderColor: overallColor }}>
+                    <h1 className="text-3xl font-bold" style={{ color: overallColor }}>{__('Readiness Report', 'smc-viable')}</h1>
                     <p className="text-gray-500">{new Date().toLocaleDateString()}</p>
                 </div>
 
                 <div className="flex items-center gap-8 mb-8">
                     <div className="w-1/3 text-center">
-                        <div className="mx-auto flex items-center justify-center rounded-full border-8 h-24 w-24" style={{ borderColor: '#15803d' }}>
+                        <div className="mx-auto flex items-center justify-center rounded-full border-8 h-24 w-24" style={{ borderColor: overallColor }}>
                             <span className="text-2xl font-bold">{readinessRating.percent}%</span>
                         </div>
                         <div className="text-sm font-bold mt-2 uppercase text-gray-600">{__('Readiness Score', 'smc-viable')}</div>
                     </div>
                     <div className="w-2/3">
-                        <h2 className="text-2xl font-bold" style={{ color: readinessRating.level.includes('Critical') ? '#b91c1c' : '#15803d' }}>
+                        <h2 className="text-2xl font-bold" style={{ color: overallColor }}>
                             {readinessRating.level}
                         </h2>
                         <p className="mt-1 text-gray-600">
@@ -259,7 +265,7 @@ export default function ResultsDashboard({ answers, quiz }) {
 
                 {/* PDF Breakdown Table */}
                 <div className="mb-8">
-                    <h3 className="text-lg font-bold mb-4 pb-1 border-b border-gray-200" style={{ color: '#15803d' }}>{__('Stage Breakdown', 'smc-viable')}</h3>
+                    <h3 className="text-lg font-bold mb-4 pb-1 border-b border-gray-200" style={{ color: overallColor }}>{__('Stage Breakdown', 'smc-viable')}</h3>
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="text-left bg-gray-100">
@@ -269,18 +275,26 @@ export default function ResultsDashboard({ answers, quiz }) {
                             </tr>
                         </thead>
                         <tbody>
-                            {Object.entries(scoresByStage).map(([stageName, data]) => (
-                                <tr key={stageName} className="border-b border-gray-100">
-                                    <td className="p-2 font-medium">{stageName}</td>
-                                    <td className="p-2">{data.total}/{data.max}</td>
-                                    <td className="p-2">
-                                        {data.flags > 0 ?
-                                            <span className="font-bold" style={{ color: '#b91c1c' }}>{data.flags} Flags</span> :
-                                            (data.total / data.max < 0.5 ? <span className="font-bold" style={{ color: '#ca8a04' }}>Weak</span> : <span className="font-bold" style={{ color: '#15803d' }}>Good</span>)
-                                        }
-                                    </td>
-                                </tr>
-                            ))}
+                            {Object.entries(scoresByStage).map(([stageName, data]) => {
+                                const stagePercent = (data.total / (data.max || 1)) * 100;
+                                const stageColor = getScoreColorHex(stagePercent);
+                                return (
+                                    <tr key={stageName} className="border-b border-gray-100">
+                                        <td className="p-2 font-medium">{stageName}</td>
+                                        <td className="p-2">{data.total}/{data.max}</td>
+                                        <td className="p-2">
+                                            {data.flags > 0 ?
+                                                <span className="font-bold" style={{ color: '#dc2626' }}>{data.flags} Flags</span> :
+                                                <span className="font-bold" style={{ color: stageColor }}>
+                                                    {stagePercent >= 80 ? 'Strong' :
+                                                        stagePercent >= 60 ? 'Moderate' :
+                                                            stagePercent >= 40 ? 'Weak' : 'Critical'}
+                                                </span>
+                                            }
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>

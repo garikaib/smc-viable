@@ -1,0 +1,289 @@
+{
+  "assessment_questions": [
+    {
+      "stage": "Foundation & Legal",
+      "question": "Nature of Business (Type it in)",
+      "response_config": {
+        "type": "open_ended"
+      }
+    },
+    {
+      "stage": "Foundation & Legal",
+      "question": "Type of Business (Choose Option)",
+      "response_config": {
+        "type": "dropdown",
+        "options": [
+          {
+            "label": "Services",
+            "score": null
+          }
+        ]
+      }
+    },
+    {
+      "stage": "Foundation & Legal",
+      "question": "Business Model (Choose option)",
+      "response_config": {
+        "type": "dropdown",
+        "options": [
+          {
+            "label": "Consumer to Consumer",
+            "score": null
+          }
+        ]
+      }
+    },
+    {
+      "stage": "Foundation & Legal",
+      "question": "Date Commenced (Double click to add date)",
+      "response_config": {
+        "type": "dropdown",
+        "options": [
+          {
+            "label": "Less than 6 months",
+            "score": null
+          }
+        ]
+      }
+    },
+    {
+      "stage": "Market & Offering",
+      "question": "Ready Market (vs market dev requirements)",
+      "response_config": {
+        "type": "dropdown",
+        "options": [
+          {
+            "label": "No Ready Market",
+            "score": null
+          }
+        ]
+      }
+    },
+    {
+      "stage": "Market & Offering",
+      "question": "Willingness to pay/ essential (vs nice to have)",
+      "response_config": {
+        "type": "dropdown",
+        "options": [
+          {
+            "label": "Essential Product/ Service",
+            "score": null
+          }
+        ]
+      }
+    },
+    {
+      "stage": "Market & Offering",
+      "question": "Uniqueness of offering (outstanding service)",
+      "response_config": {
+        "type": "dropdown",
+        "options": [
+          {
+            "label": "Unique Product/ Service",
+            "score": null
+          }
+        ]
+      }
+    },
+    {
+      "stage": "Market & Offering",
+      "question": "Completeness vs requires heavy research",
+      "response_config": {
+        "type": "dropdown",
+        "options": [
+          {
+            "label": "Established & Ready Product",
+            "score": null
+          }
+        ]
+      }
+    },
+    {
+      "stage": "Operational Strategy & Capability",
+      "question": "Staff Compliment (Choose option)",
+      "response_config": {
+        "type": "dropdown",
+        "options": [
+          {
+            "label": "2 to",
+            "score": 5
+          }
+        ]
+      }
+    },
+    {
+      "stage": "Operational Strategy & Capability",
+      "question": "Current Partners (Type it in)",
+      "response_config": {
+        "type": "open_ended"
+      }
+    },
+    {
+      "stage": "Operational Strategy & Capability",
+      "question": "Potential/ Strategic Partners (Type it in)",
+      "response_config": {
+        "type": "open_ended"
+      }
+    },
+    {
+      "stage": "Operational Strategy & Capability",
+      "question": "Level of Outsourcing",
+      "response_config": {
+        "type": "dropdown",
+        "options": [
+          {
+            "label": "Close to 10%",
+            "score": null
+          }
+        ]
+      }
+    },
+    {
+      "stage": "Operational Strategy & Capability",
+      "question": "Level of Relatedness to main business (vs 3rd tier innovation)",
+      "response_config": {
+        "type": "dropdown",
+        "options": [
+          {
+            "label": "Related",
+            "score": null
+          }
+        ]
+      }
+    },
+    {
+      "stage": "Financial Health & Economics",
+      "question": "Good Margins or good volumes (has to be either of the 2 to get positive rating)",
+      "response_config": {
+        "type": "dropdown",
+        "options": [
+          {
+            "label": "Great Volume Great Margin",
+            "score": null
+          }
+        ]
+      }
+    },
+    {
+      "stage": "Financial Health & Economics",
+      "question": "Capex intensive (vs low entry barriers)",
+      "response_config": {
+        "type": "dropdown",
+        "options": [
+          {
+            "label": "No CAPEX",
+            "score": null
+          }
+        ]
+      }
+    },
+    {
+      "stage": "Financial Health & Economics",
+      "question": "Recurring revenue (vs once off)",
+      "response_config": {
+        "type": "dropdown",
+        "options": [
+          {
+            "label": "High Initial Fee + Reccuring Rev",
+            "score": null
+          }
+        ]
+      }
+    },
+    {
+      "stage": "Investment & Future Readiness",
+      "question": "Bankable/ Investable vs Definitely Self Sponsored",
+      "response_config": {
+        "type": "dropdown",
+        "options": [
+          {
+            "label": "Independent",
+            "score": null
+          }
+        ]
+      }
+    },
+    {
+      "stage": "Investment & Future Readiness",
+      "question": "Time-frame to Independent Operations (Double click to add date)",
+      "response_config": {
+        "type": "dropdown",
+        "options": [
+          {
+            "label": "Less than 6 months",
+            "score": null
+          }
+        ]
+      }
+    },
+    {
+      "stage": null,
+      "question": "Your Result:",
+      "response_config": {
+        "type": "unknown",
+        "raw": "120"
+      }
+    },
+    {
+      "stage": "Recommendation based on your score:",
+      "question": "Greater than 140",
+      "response_config": {
+        "type": "dropdown",
+        "options": [
+          {
+            "label": "Your Business Idea is Brilliant! Share it with honest and well intentioned partners and investors and get going!!!",
+            "score": null
+          }
+        ]
+      }
+    },
+    {
+      "stage": null,
+      "question": "Between 90 and 140",
+      "response_config": {
+        "type": "dropdown",
+        "options": [
+          {
+            "label": "Your Business Idea is Good! It is safe to start, but continue working on the low scores (in orange and red) to make it Brilliant! (dark green).",
+            "score": null
+          }
+        ]
+      }
+    },
+    {
+      "stage": null,
+      "question": "Between 60 and 89",
+      "response_config": {
+        "type": "dropdown",
+        "options": [
+          {
+            "label": "Your Business Idea is not yet a good idea. Objectively work on the low scores (in orange and red) to make it Good (green)!",
+            "score": null
+          }
+        ]
+      }
+    },
+    {
+      "stage": null,
+      "question": "Less than 60",
+      "response_config": {
+        "type": "dropdown",
+        "options": [
+          {
+            "label": "Your Business Idea is not viable. Objectively work on the low scores (in orange and red) to make it Good (green)!",
+            "score": null
+          }
+        ]
+      }
+    },
+    {
+      "stage": null,
+      "question": 12,
+      "response_config": {
+        "type": "unknown",
+        "raw": "12"
+      }
+    }
+  ],
+  "dashboard_summary": []
+}

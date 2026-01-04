@@ -1,201 +1,438 @@
 {
-    "version": "1.0.0",
-    "assessments": [
+  "version": "1.0.0",
+  "exportedAt": "2026-01-04T11:23:14.781Z",
+  "assessments": [
+    {
+      "title": "Basic Assessment",
+      "questions": [
         {
-            "title": "Basic Assessment",
-            "questions": [
-                {
-                    "id": "basic_6",
-                    "stage": "Foundation & Legal",
-                    "indicator": "Nature of Business",
-                    "text": "What is the nature of your business?",
-                    "key_text": "Describe what your business does.",
-                    "type": "text",
-                    "options": []
-                },
-                {
-                    "id": "basic_7",
-                    "stage": "Foundation & Legal",
-                    "indicator": "Type of Business",
-                    "text": "Which category best describes your business?",
-                    "key_text": "Services",
-                    "type": "select",
-                    "options": [
-                        "Services",
-                        "Manufacturing",
-                        "Retail",
-                        "Agriculture",
-                        "Technology"
-                    ]
-                },
-                {
-                    "id": "basic_9",
-                    "stage": "Foundation & Legal",
-                    "indicator": "Operational Duration",
-                    "text": "When did your business commence operations?",
-                    "key_text": "Less than 6 months",
-                    "type": "date",
-                    "options": []
-                },
-                {
-                    "id": "basic_10",
-                    "stage": "Market & Offering",
-                    "indicator": "Market Readiness",
-                    "text": "How developed is the market for your product/service?",
-                    "key_text": "Example: No Ready Market",
-                    "type": "scorable",
-                    "options": []
-                },
-                {
-                    "id": "basic_11",
-                    "stage": "Market & Offering",
-                    "indicator": "Necessity",
-                    "text": "Is your product/service considered essential or a 'nice-to-have'?",
-                    "key_text": "Example: Essential Product/Service",
-                    "type": "scorable",
-                    "options": []
-                },
-                {
-                    "id": "basic_12",
-                    "stage": "Market & Offering",
-                    "indicator": "Uniqueness",
-                    "text": "How unique is your offering compared to competitors?",
-                    "key_text": "Example: Unique Product/Service",
-                    "type": "scorable",
-                    "options": []
-                },
-                {
-                    "id": "basic_13",
-                    "stage": "Market & Offering",
-                    "indicator": "Product Completeness",
-                    "text": "Is your product fully developed and ready for sale, or does it require more research?",
-                    "key_text": "Example: Established & Ready Product",
-                    "type": "scorable",
-                    "options": []
-                },
-                {
-                    "id": "basic_17",
-                    "stage": "Operational Strategy & Capability",
-                    "indicator": "Outsourcing Level",
-                    "text": "What percentage of your operations are outsourced?",
-                    "key_text": "Example: Close to 10%",
-                    "type": "scorable",
-                    "options": []
-                },
-                {
-                    "id": "basic_18",
-                    "stage": "Operational Strategy & Capability",
-                    "indicator": "Strategic Fit",
-                    "text": "How closely related is this new idea to your main business core?",
-                    "key_text": "Example: Related",
-                    "type": "scorable",
-                    "options": []
-                },
-                {
-                    "id": "basic_19",
-                    "stage": "Financial Health & Economics",
-                    "indicator": "Margins & Volume",
-                    "text": "Do you have strong profit margins or high sales volume?",
-                    "key_text": "Example: Great Volume Great Margin",
-                    "type": "scorable",
-                    "options": []
-                },
-                {
-                    "id": "basic_20",
-                    "stage": "Financial Health & Economics",
-                    "indicator": "Capital Expenditure",
-                    "text": "Is your business setup expensive (CAPEX intensive)?",
-                    "key_text": "Example: No CAPEX",
-                    "type": "scorable",
-                    "options": []
-                },
-                {
-                    "id": "basic_21",
-                    "stage": "Financial Health & Economics",
-                    "indicator": "Revenue Model",
-                    "text": "Is your revenue recurring (subscription/repeat) or one-off?",
-                    "key_text": "Example: High Initial Fee + Recurring Rev",
-                    "type": "scorable",
-                    "options": []
-                },
-                {
-                    "id": "basic_22",
-                    "stage": "Investment & Future Readiness",
-                    "indicator": "Financial Independence",
-                    "text": "Are you dependent on external funding or self-sponsored?",
-                    "key_text": "Example: Independent",
-                    "type": "scorable",
-                    "options": []
-                },
-                {
-                    "id": "basic_23",
-                    "stage": "Investment & Future Readiness",
-                    "indicator": "Independence Timeline",
-                    "text": "How soon will the business be operationally independent?",
-                    "key_text": "Example: Less than 6 months",
-                    "type": "scorable",
-                    "options": []
-                }
-            ]
+          "id": 1767518594739,
+          "type": "text",
+          "stage": "Foundation & Legal",
+          "indicator": "Foundation & Legal",
+          "text": "Nature of Business (Type it in)",
+          "options": [],
+          "guidance": "Type it in",
+          "key_text": ""
         },
         {
-            "title": "Advanced Assessment",
-            "questions": [
-                {
-                    "id": "advanced_16",
-                    "stage": "Market & Offering",
-                    "indicator": "Market Potential",
-                    "text": "What is the estimated size of your target demographic?",
-                    "key_text": "Example: > 25% of Target Demographic",
-                    "type": "scorable",
-                    "options": []
-                },
-                {
-                    "id": "advanced_17",
-                    "stage": "Market & Offering",
-                    "indicator": "Competitive Landscape",
-                    "text": "Describe your competition level and market growth.",
-                    "key_text": "Example: Few (0-1) direct rivals; Market is growing.",
-                    "type": "scorable",
-                    "options": []
-                },
-                {
-                    "id": "advanced_18",
-                    "stage": "Market & Offering",
-                    "indicator": "Proprietary Edge",
-                    "text": "Do you have registered trademarks or proprietary technology?",
-                    "key_text": "Example: Registered Trademark AND Proprietary Process/Tech",
-                    "type": "scorable",
-                    "options": []
-                },
-                {
-                    "id": "advanced_27",
-                    "stage": "Financial Health & Economics",
-                    "indicator": "Recurring Revenue",
-                    "text": "Is your revenue model based on recurring fees?",
-                    "key_text": "Example: Once Off Fee",
-                    "type": "scorable",
-                    "options": []
-                },
-                {
-                    "id": "advanced_30",
-                    "stage": "Financial Health & Economics",
-                    "indicator": "Core Profitability",
-                    "text": "What is your net profit margin?",
-                    "key_text": "Example: >25% Net Profit Margin.",
-                    "type": "scorable",
-                    "options": []
-                },
-                {
-                    "id": "advanced_32",
-                    "stage": "Investment & Future Readiness",
-                    "indicator": "Time to Profitability",
-                    "text": "How long until you break even?",
-                    "key_text": "Example: ≤6 Months.",
-                    "type": "scorable",
-                    "options": []
-                }
-            ]
+          "id": 1767518594740,
+          "type": "select",
+          "stage": "Foundation & Legal",
+          "indicator": "Foundation & Legal",
+          "text": "Type of Business (Choose Option)",
+          "options": [
+            {
+              "label": "Manufacturing",
+              "score": 0
+            },
+            {
+              "label": "Services",
+              "score": 0
+            },
+            {
+              "label": "Wholesaling",
+              "score": 0
+            },
+            {
+              "label": "Retailing",
+              "score": 0
+            }
+          ],
+          "guidance": "Choose Option",
+          "key_text": "Services"
+        },
+        {
+          "id": 1767518594742,
+          "type": "select",
+          "stage": "Foundation & Legal",
+          "indicator": "Foundation & Legal",
+          "text": "Business Model (Choose option)",
+          "options": [
+            {
+              "label": "Business to Business (B2B)",
+              "score": 0
+            },
+            {
+              "label": "Busines to Consumer (B2C)",
+              "score": 0
+            },
+            {
+              "label": "Consumer to Consumer",
+              "score": 0
+            },
+            {
+              "label": "Consumer to Business",
+              "score": 0
+            }
+          ],
+          "guidance": "Choose option",
+          "key_text": "Consumer to Consumer"
+        },
+        {
+          "id": 1767518594743,
+          "type": "select",
+          "stage": "Foundation & Legal",
+          "indicator": "Foundation & Legal",
+          "text": "Date Commenced (Double click to add date)",
+          "options": [
+            {
+              "label": "Older than 5 years",
+              "score": 15
+            },
+            {
+              "label": "Between 3 and 5 years",
+              "score": 10
+            },
+            {
+              "label": "Less than 6 months",
+              "score": -5
+            },
+            {
+              "label": "Greater than 6 months less than 3 yrs",
+              "score": 5
+            }
+          ],
+          "guidance": "Double click to add date",
+          "key_text": "Less than 6 months"
+        },
+        {
+          "id": 1767518594746,
+          "type": "select",
+          "stage": "Market & Offering",
+          "indicator": "Market & Offering",
+          "text": "Ready Market (vs market dev requirements)",
+          "options": [
+            {
+              "label": "Ready Market",
+              "score": 10
+            },
+            {
+              "label": "No Ready Market",
+              "score": -5
+            },
+            {
+              "label": "Market Averagely Developed",
+              "score": 5
+            }
+          ],
+          "guidance": "vs market dev requirements",
+          "key_text": "No Ready Market"
+        },
+        {
+          "id": 1767518594748,
+          "type": "select",
+          "stage": "Market & Offering",
+          "indicator": "Market & Offering",
+          "text": "Willingness to pay/ essential (vs nice to have)",
+          "options": [
+            {
+              "label": "Essential Product/ Service",
+              "score": 10
+            },
+            {
+              "label": "Good - willing to pay",
+              "score": 5
+            },
+            {
+              "label": "Nice to have",
+              "score": -5
+            }
+          ],
+          "guidance": "vs nice to have",
+          "key_text": "Essential Product/ Service"
+        },
+        {
+          "id": 1767518594750,
+          "type": "select",
+          "stage": "Market & Offering",
+          "indicator": "Market & Offering",
+          "text": "Uniqueness of offering (outstanding service)",
+          "options": [
+            {
+              "label": "Unique Product/ Service",
+              "score": 15
+            },
+            {
+              "label": "Highly Differentiated Product/ Service",
+              "score": 10
+            },
+            {
+              "label": "Moderately Differentiated Product/ Service",
+              "score": 5
+            },
+            {
+              "label": "Common Product/ Service",
+              "score": -5
+            }
+          ],
+          "guidance": "outstanding service",
+          "key_text": "Unique Product/ Service"
+        },
+        {
+          "id": 1767518594751,
+          "type": "select",
+          "stage": "Market & Offering",
+          "indicator": "Market & Offering",
+          "text": "Completeness vs requires heavy research",
+          "options": [
+            {
+              "label": "Extensive Product Research",
+              "score": -5
+            },
+            {
+              "label": "Standard Market Research",
+              "score": 5
+            },
+            {
+              "label": "Established & Ready Product",
+              "score": 10
+            }
+          ],
+          "guidance": "",
+          "key_text": "Established & Ready Product"
+        },
+        {
+          "id": 1767518594753,
+          "type": "select",
+          "stage": "Operational Strategy & Capability",
+          "indicator": "Operational Strategy & Capability",
+          "text": "Staff Compliment (Choose option)",
+          "options": [
+            {
+              "label": "1",
+              "score": 0
+            },
+            {
+              "label": "2 to 5",
+              "score": 0
+            },
+            {
+              "label": "6 to 10",
+              "score": 0
+            },
+            {
+              "label": "More than 10",
+              "score": 0
+            }
+          ],
+          "guidance": "Choose option",
+          "key_text": "2 to 5"
+        },
+        {
+          "id": 1767518594756,
+          "type": "text",
+          "stage": "Operational Strategy & Capability",
+          "indicator": "Operational Strategy & Capability",
+          "text": "Current Partners (Type it in)",
+          "options": [],
+          "guidance": "Type it in",
+          "key_text": ""
+        },
+        {
+          "id": 1767518594758,
+          "type": "text",
+          "stage": "Operational Strategy & Capability",
+          "indicator": "Operational Strategy & Capability",
+          "text": "Potential/ Strategic Partners (Type it in)",
+          "options": [],
+          "guidance": "Type it in",
+          "key_text": ""
+        },
+        {
+          "id": 1767518594760,
+          "type": "select",
+          "stage": "Operational Strategy & Capability",
+          "indicator": "Operational Strategy & Capability",
+          "text": "Level of Outsourcing",
+          "options": [
+            {
+              "label": "Close to 90%",
+              "score": -5
+            },
+            {
+              "label": "Close to 50%",
+              "score": 5
+            },
+            {
+              "label": "Close to 10%",
+              "score": 10
+            }
+          ],
+          "guidance": "",
+          "key_text": "Close to 10%"
+        },
+        {
+          "id": 1767518594762,
+          "type": "select",
+          "stage": "Operational Strategy & Capability",
+          "indicator": "Operational Strategy & Capability",
+          "text": "Level of Relatedness to main business (vs 3rd tier innovation)",
+          "options": [
+            {
+              "label": "Related",
+              "score": 10
+            },
+            {
+              "label": "Unrelated",
+              "score": -5
+            }
+          ],
+          "guidance": "vs 3rd tier innovation",
+          "key_text": "Related"
+        },
+        {
+          "id": 1767518594763,
+          "type": "select",
+          "stage": "Financial Health & Economics",
+          "indicator": "Financial Health & Economics",
+          "text": "Good Margins or good volumes (has to be either of the 2 to get positive rating)",
+          "options": [
+            {
+              "label": "Great Margin Low Volume",
+              "score": 10
+            },
+            {
+              "label": "Good Margin Average Volume",
+              "score": 5
+            },
+            {
+              "label": "Average Margin Good Volume",
+              "score": 5
+            },
+            {
+              "label": "Low Margin Great Volume",
+              "score": 10
+            },
+            {
+              "label": "Great Volume Great Margin",
+              "score": 15
+            },
+            {
+              "label": "Average Volume Average Margin",
+              "score": 5
+            },
+            {
+              "label": "Low Volume Low Margin",
+              "score": -5
+            },
+            {
+              "label": "Good Volume Good Margin",
+              "score": 10
+            }
+          ],
+          "guidance": "has to be either of the 2 to get positive rating",
+          "key_text": "Great Volume Great Margin"
+        },
+        {
+          "id": 1767518594766,
+          "type": "select",
+          "stage": "Financial Health & Economics",
+          "indicator": "Financial Health & Economics",
+          "text": "Capex intensive (vs low entry barriers)",
+          "options": [
+            {
+              "label": "CAPEX Intensive",
+              "score": -5
+            },
+            {
+              "label": "Medium CAPEX",
+              "score": 5
+            },
+            {
+              "label": "Low CAPEX",
+              "score": 10
+            },
+            {
+              "label": "No CAPEX",
+              "score": 15
+            }
+          ],
+          "guidance": "vs low entry barriers",
+          "key_text": "No CAPEX"
+        },
+        {
+          "id": 1767518594768,
+          "type": "select",
+          "stage": "Financial Health & Economics",
+          "indicator": "Financial Health & Economics",
+          "text": "Recurring revenue (vs once off)",
+          "options": [
+            {
+              "label": "High Initial Fee + Reccuring Rev",
+              "score": 15
+            },
+            {
+              "label": "Moderate Initial Fee + Recurring Rev",
+              "score": 10
+            },
+            {
+              "label": "Low Initial Fee + Recurring Rev",
+              "score": 5
+            },
+            {
+              "label": "Once Off Fee",
+              "score": -5
+            }
+          ],
+          "guidance": "vs once off",
+          "key_text": "High Initial Fee + Reccuring Rev"
+        },
+        {
+          "id": 1767518594770,
+          "type": "select",
+          "stage": "Investment & Future Readiness",
+          "indicator": "Investment & Future Readiness",
+          "text": "Bankable/ Investable vs Definitely Self Sponsored",
+          "options": [
+            {
+              "label": "Independent",
+              "score": 15
+            },
+            {
+              "label": "Currently Sponsored",
+              "score": -5
+            },
+            {
+              "label": "Part Sponsored",
+              "score": 5
+            },
+            {
+              "label": "100% Bankable",
+              "score": 10
+            }
+          ],
+          "guidance": "",
+          "key_text": "Independent"
+        },
+        {
+          "id": 1767518594771,
+          "type": "select",
+          "stage": "Investment & Future Readiness",
+          "indicator": "Investment & Future Readiness",
+          "text": "Time-frame to Independent Operations (Double click to add date)",
+          "options": [
+            {
+              "label": "After 1.5 yrs",
+              "score": -5
+            },
+            {
+              "label": "Between 1 yr and 1.5 yrs",
+              "score": 5
+            },
+            {
+              "label": "Less than 6 months",
+              "score": 15
+            },
+            {
+              "label": "From 6 months to 1 yr",
+              "score": 10
+            }
+          ],
+          "guidance": "Double click to add date",
+          "key_text": "Less than 6 months"
         }
-    ]
+      ]
+    }
+  ]
 }
