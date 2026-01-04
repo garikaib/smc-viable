@@ -1,18 +1,23 @@
 import { __ } from '@wordpress/i18n';
-import { Button, TextControl, Spinner, Notice, TabPanel, TextareaControl, RadioControl, PanelBody, PanelRow } from '@wordpress/components';
+import { Button, TextControl, Spinner, Notice, TabPanel, TextareaControl, RadioControl, PanelBody, PanelRow, ToggleControl } from '@wordpress/components';
 import { useState, useEffect } from '@wordpress/element';
 import { fetchQuiz, saveQuiz } from '../utils/api';
 import QuestionEditor from './QuestionEditor';
+import DashboardRuleEditor from './DashboardRuleEditor';
 
 export default function QuizEditor({ quizId, onBack }) {
     const [title, setTitle] = useState('');
     const [questions, setQuestions] = useState([]);
 
-    // New Config States
+    // Config States
     const [settings, setSettings] = useState({ delivery_mode: 'download' });
-    const [headerImage, setHeaderImage] = useState(''); // Future proofing
     const [stages, setStages] = useState(['Market & Offering', 'Business Model', 'Execution']);
-    const [dashboardConfig, setDashboardConfig] = useState('{\n  "version": "1.0.0",\n  "dashboard_config": {\n    "title": "Business Viability Assessment Results",\n    "rules": []\n  }\n}');
+
+    // Dashboard States
+    const [dashboardTitle, setDashboardTitle] = useState('Assessment Results');
+    const [dashboardRules, setDashboardRules] = useState([]);
+    const [showJsonEditor, setShowJsonEditor] = useState(false); // Toggle for advanced mode
+    const [rawJson, setRawJson] = useState(''); // Only used if showJsonEditor is true
 
     const [isLoading, setIsLoading] = useState(!!quizId);
     const [isSaving, setIsSaving] = useState(false);
@@ -29,13 +34,25 @@ export default function QuizEditor({ quizId, onBack }) {
                     setQuestions(Array.isArray(metaQuestions) ? metaQuestions : []);
 
                     if (meta._smc_quiz_settings) setSettings(meta._smc_quiz_settings);
-                    if (meta._smc_quiz_dashboard_config) {
-                        // Ensure it's string for Textarea
-                        const config = meta._smc_quiz_dashboard_config;
-                        setDashboardConfig(typeof config === 'string' ? config : JSON.stringify(config, null, 2));
-                    }
+
                     if (meta._smc_quiz_stages && Array.isArray(meta._smc_quiz_stages) && meta._smc_quiz_stages.length > 0) {
                         setStages(meta._smc_quiz_stages);
+                    }
+
+                    // Parse Dashboard Config
+                    if (meta._smc_quiz_dashboard_config) {
+                        try {
+                            const conf = typeof meta._smc_quiz_dashboard_config === 'string'
+                                ? JSON.parse(meta._smc_quiz_dashboard_config)
+                                : meta._smc_quiz_dashboard_config;
+
+                            if (conf && conf.dashboard_config) {
+                                setDashboardTitle(conf.dashboard_config.title || 'Assessment Results');
+                                setDashboardRules(conf.dashboard_config.rules || []);
+                            }
+                        } catch (e) {
+                            console.error("Failed to parse existing dashboard config", e);
+                        }
                     }
                 })
                 .catch((err) => setNotice({ status: 'error', text: err.message }))
@@ -47,15 +64,14 @@ export default function QuizEditor({ quizId, onBack }) {
         setIsSaving(true);
         setNotice(null);
 
-        // Validate JSON
-        let parsedConfig = {};
-        try {
-            parsedConfig = JSON.parse(dashboardConfig);
-        } catch (e) {
-            setNotice({ status: 'error', text: __('Invalid JSON in Dashboard Config', 'smc-viable') });
-            setIsSaving(false);
-            return;
-        }
+        // Reconstruct Dashboard Config JSON
+        const fullDashboardConfig = {
+            version: "1.0.0",
+            dashboard_config: {
+                title: dashboardTitle,
+                rules: dashboardRules
+            }
+        };
 
         const data = {
             id: quizId,
@@ -63,12 +79,9 @@ export default function QuizEditor({ quizId, onBack }) {
             status: 'publish',
             questions: questions,
             settings: settings,
-            dashboard_config: parsedConfig, // API expects object or JSON depending on registration. Controller expects raw param, update_post_meta handles it. WP meta handles arrays/objects serialized.
+            dashboard_config: fullDashboardConfig,
             stages: stages
         };
-
-        // Note: Controller expects simple params. Arrays/Objects passed via axios/apiFetch become JSON payload.
-        // WP REST API handles them. 
 
         saveQuiz(data)
             .then(() => {
@@ -81,6 +94,7 @@ export default function QuizEditor({ quizId, onBack }) {
             .finally(() => setIsSaving(false));
     };
 
+    // --- Helpers ---
     const addQuestion = () => {
         const newQ = {
             id: Date.now(),
@@ -115,6 +129,45 @@ export default function QuizEditor({ quizId, onBack }) {
         const newStages = stages.filter((_, i) => i !== idx);
         setStages(newStages);
     };
+
+    // Dashboard Rule Management
+    const addRule = () => {
+        const newRule = {
+            id: `rule_${Date.now()}`,
+            condition_text: 'New Condition',
+            logic: { operator: 'gt', value: 50, min: 0, max: 0 },
+            message: 'Feedback message here...',
+            style: { color: 'green', icon: 'check' }
+        };
+        setDashboardRules([...dashboardRules, newRule]);
+    };
+
+    const updateRule = (index, newRule) => {
+        const newRules = [...dashboardRules];
+        newRules[index] = newRule;
+        setDashboardRules(newRules);
+    };
+
+    const removeRule = (index) => {
+        const newRules = dashboardRules.filter((_, i) => i !== index);
+        setDashboardRules(newRules);
+    };
+
+    const handleImportJson = (jsonString) => {
+        try {
+            const parsed = JSON.parse(jsonString);
+            if (parsed.dashboard_config) {
+                setDashboardTitle(parsed.dashboard_config.title || dashboardTitle);
+                setDashboardRules(parsed.dashboard_config.rules || []);
+                setNotice({ status: 'success', text: 'Dashboard config imported!' });
+            } else {
+                setNotice({ status: 'error', text: 'Invalid JSON format: missing dashboard_config' });
+            }
+        } catch (e) {
+            setNotice({ status: 'error', text: 'Invalid JSON' });
+        }
+    };
+
 
     if (isLoading) return <Spinner />;
 
@@ -163,7 +216,7 @@ export default function QuizEditor({ quizId, onBack }) {
                         );
                     } else if (tab.name === 'config') {
                         return (
-                            <div style={{ marginTop: '20px', maxWidth: '600px' }}>
+                            <div style={{ marginTop: '20px' }}>
                                 <h3>{__('Report Settings', 'smc-viable')}</h3>
                                 <RadioControl
                                     label={__('Delivery Mode', 'smc-viable')}
@@ -194,27 +247,57 @@ export default function QuizEditor({ quizId, onBack }) {
                     } else if (tab.name === 'dashboard') {
                         return (
                             <div style={{ marginTop: '20px' }}>
-                                <h3>{__('Dashboard JSON Configuration', 'smc-viable')}</h3>
-                                <p>{__('Configure scoring rules and messages.', 'smc-viable')}</p>
-                                <TextareaControl
-                                    label={__('JSON Config', 'smc-viable')}
-                                    value={dashboardConfig}
-                                    onChange={setDashboardConfig}
-                                    rows={20}
-                                    style={{ fontFamily: 'monospace', fontSize: '12px' }}
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3>{__('Scoring Rules', 'smc-viable')}</h3>
+                                    <div className="flex gap-2">
+                                        <Button isSecondary isSmall onClick={() => {
+                                            const input = document.createElement('input');
+                                            input.type = 'file';
+                                            input.accept = 'application/json';
+                                            input.onchange = (e) => {
+                                                const file = e.target.files[0];
+                                                const reader = new FileReader();
+                                                reader.onload = (ev) => handleImportJson(ev.target.result);
+                                                reader.readAsText(file);
+                                            };
+                                            input.click();
+                                        }}>Import JSON</Button>
+                                        <ToggleControl
+                                            label="Advanced (Raw JSON)"
+                                            checked={showJsonEditor}
+                                            onChange={setShowJsonEditor}
+                                        />
+                                    </div>
+                                </div>
+
+                                <TextControl
+                                    label={__('Report Title', 'smc-viable')}
+                                    value={dashboardTitle}
+                                    onChange={setDashboardTitle}
+                                    help="The title shown on the final results page/PDF."
                                 />
-                                <Button isSecondary onClick={() => {
-                                    const input = document.createElement('input');
-                                    input.type = 'file';
-                                    input.accept = 'application/json';
-                                    input.onchange = (e) => {
-                                        const file = e.target.files[0];
-                                        const reader = new FileReader();
-                                        reader.onload = (ev) => setDashboardConfig(ev.target.result);
-                                        reader.readAsText(file);
-                                    };
-                                    input.click();
-                                }}>{__('Import JSON', 'smc-viable')}</Button>
+
+                                {showJsonEditor ? (
+                                    <TextareaControl
+                                        label="Raw JSON Config"
+                                        value={JSON.stringify({ version: "1.0.0", dashboard_config: { title: dashboardTitle, rules: dashboardRules } }, null, 2)}
+                                        onChange={(val) => handleImportJson(val)}
+                                        rows={15}
+                                    />
+                                ) : (
+                                    <div className="mt-6">
+                                        {dashboardRules.length === 0 && <p className="text-gray-500 italic">No rules defined. Add one below.</p>}
+                                        {dashboardRules.map((rule, idx) => (
+                                            <DashboardRuleEditor
+                                                key={idx}
+                                                rule={rule}
+                                                onChange={(newRule) => updateRule(idx, newRule)}
+                                                onRemove={() => removeRule(idx)}
+                                            />
+                                        ))}
+                                        <Button isSecondary onClick={addRule}>{__('Add Scoring Rule', 'smc-viable')}</Button>
+                                    </div>
+                                )}
                             </div>
                         );
                     }

@@ -26,7 +26,7 @@ export default function App() {
             <h1 className="wp-heading-inline">SMC Quiz Manager</h1>
             <hr className="wp-header-end" />
 
-            <div style={{ marginTop: '20px', maxWidth: '800px' }}>
+            <div style={{ marginTop: '20px', width: '100%' }}>
                 {view === 'list' && (
                     <QuizList onEdit={handleEdit} onCreate={handleCreate} />
                 )}
