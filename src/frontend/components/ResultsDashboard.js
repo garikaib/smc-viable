@@ -26,9 +26,20 @@ export default function ResultsDashboard({ answers, quiz }) {
             stageGroups[stage].items.push(q);
 
             // Scoring
-            if (q.type === 'scorable' && answers[q.id] !== undefined) {
-                const val = parseInt(answers[q.id]);
-                if (!isNaN(val)) {
+            if ((q.type === 'scorable' || q.type === 'select') && answers[q.id] !== undefined) {
+                // Determine value/score
+                let val = null;
+                if (q.type === 'scorable') {
+                    val = parseInt(answers[q.id]);
+                } else if (q.type === 'select') {
+                    // Find score from options
+                    const selectedOpt = (q.options || []).find(o => (typeof o === 'object' ? o.label : o) === answers[q.id]);
+                    if (selectedOpt && typeof selectedOpt === 'object' && selectedOpt.score !== undefined) {
+                        val = selectedOpt.score;
+                    } // else, no score (e.g. legacy string option or score 0)
+                }
+
+                if (val !== null && !isNaN(val)) {
                     total += val;
                     stageGroups[stage].total += val;
 

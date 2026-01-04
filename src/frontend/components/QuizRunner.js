@@ -135,15 +135,58 @@ export default function QuizRunner({ quizId }) {
                                 )}
 
                                 {q.type === 'select' && (
-                                    <SelectControl
-                                        value={answers[q.id] || ''}
-                                        options={[
-                                            { label: __('Pick one...', 'smc-viable'), value: '' },
-                                            ...(q.options || []).map(opt => ({ label: opt, value: opt }))
-                                        ]}
-                                        onChange={(val) => handleAnswerChange(q.id, val)}
-                                        className="w-full"
-                                    />
+                                    <div className="w-full">
+                                        <SelectControl
+                                            value={answers[q.id] || ''}
+                                            options={[
+                                                { label: __('Pick one...', 'smc-viable'), value: '' },
+                                                ...(q.options || []).map(opt => {
+                                                    // Handle object or string options
+                                                    const label = typeof opt === 'object' ? opt.label : opt;
+                                                    const score = typeof opt === 'object' ? opt.score : 0;
+                                                    // We store the label as value, but we can look up score later. 
+                                                    // Or better: Use the label as the value, and the parent component calculates score.
+                                                    // But for color coding, we need to know the score of the CURRENT value.
+                                                    return { label: label, value: label };
+                                                })
+                                            ]}
+                                            onChange={(val) => handleAnswerChange(q.id, val)}
+                                            className={`w-full ${(() => {
+                                                // Calculate color based on selected value's score
+                                                const selectedOpt = (q.options || []).find(o => (typeof o === 'object' ? o.label : o) === answers[q.id]);
+                                                if (!selectedOpt) return '';
+                                                const score = typeof selectedOpt === 'object' ? selectedOpt.score : 0;
+
+                                                if (score === 15) return 'select-success text-success-content';
+                                                if (score === 10) return 'select-warning'; // Yellowish
+                                                if (score === 5) return 'select-warning text-warning-content'; // Specific color adjustment if needed
+                                                if (score === -5) return 'select-error text-error-content bg-error/10';
+                                                return '';
+                                            })()}`}
+                                        />
+                                        {/* Status Indicator Badge for selected item */}
+                                        {answers[q.id] && (() => {
+                                            const selectedOpt = (q.options || []).find(o => (typeof o === 'object' ? o.label : o) === answers[q.id]);
+                                            if (!selectedOpt || typeof selectedOpt !== 'object' || !selectedOpt.score) return null;
+
+                                            const { score } = selectedOpt;
+                                            let badgeClass = 'badge-ghost';
+                                            let label = '';
+
+                                            if (score === 15) { badgeClass = 'badge-success'; label = 'Great'; }
+                                            else if (score === 10) { badgeClass = 'badge-warning'; label = 'Good'; }
+                                            else if (score === 5) { badgeClass = 'badge-warning'; label = 'Borderline'; }
+                                            else if (score === -5) { badgeClass = 'badge-error'; label = 'Flag'; }
+
+                                            if (!label) return null;
+
+                                            return (
+                                                <div className={`mt-1 badge ${badgeClass} badge-outline text-xs`}>
+                                                    {label} ({score})
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
                                 )}
 
                                 {q.type === 'date' && (

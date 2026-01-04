@@ -39,7 +39,7 @@ export default function QuestionEditor({ question, onChange, onRemove, isOpen, o
     const types = [
         { label: 'Scorable (Standard 4-point)', value: 'scorable' },
         { label: 'Text Input', value: 'text' },
-        { label: 'Dropdown (Unscored)', value: 'select' },
+        { label: 'Dropdown (Scorable)', value: 'select' },
         { label: 'Date', value: 'date' }
     ];
 
@@ -49,8 +49,8 @@ export default function QuestionEditor({ question, onChange, onRemove, isOpen, o
 
     // Handle Option Changes for 'select' type
     const addOption = () => {
-        // Simple string options for select
-        updateQuestion('options', [...options, 'New Option']);
+        // Default to object structure with score 0
+        updateQuestion('options', [...options, { label: 'New Option', score: 0 }]);
     };
 
     const updateOption = (index, value) => {
@@ -163,21 +163,52 @@ export default function QuestionEditor({ question, onChange, onRemove, isOpen, o
                     {/* Select Options */}
                     {type === 'select' && (
                         <div className="form-control w-full md:col-span-2 p-4 bg-base-200 rounded-lg">
-                            <label className="label font-bold"><span className="label-text">Options</span></label>
-                            {options.map((opt, index) => (
-                                <div key={index} className="flex gap-2 mb-2">
-                                    <input
-                                        type="text"
-                                        className="input input-bordered input-sm flex-1"
-                                        value={opt}
-                                        onChange={(e) => updateOption(index, e.target.value)}
-                                    />
-                                    <button className="btn btn-square btn-sm btn-ghost text-error" onClick={() => removeOption(index)}>
-                                        &times;
-                                    </button>
-                                </div>
-                            ))}
-                            <button className="btn btn-sm btn-secondary btn-outline" onClick={addOption}>+ Add Option</button>
+                            <label className="label font-bold"><span className="label-text">Options & Scores</span></label>
+                            <p className="text-xs mb-3 text-base-content/70">
+                                Assign scores: Great (15), Good (10), Borderline (5), Flag (-5). Leave 0/empty for neutral.
+                            </p>
+                            {options.map((opt, index) => {
+                                // Hande both string (legacy) and object (new) options
+                                const label = typeof opt === 'object' ? opt.label : opt;
+                                const score = typeof opt === 'object' ? opt.score : 0;
+
+                                return (
+                                    <div key={index} className="flex gap-2 mb-2 items-center">
+                                        <input
+                                            type="text"
+                                            className="input input-bordered input-sm flex-1"
+                                            value={label}
+                                            onChange={(e) => {
+                                                const newVal = typeof opt === 'object'
+                                                    ? { ...opt, label: e.target.value }
+                                                    : { label: e.target.value, score: 0 };
+                                                updateOption(index, newVal);
+                                            }}
+                                            placeholder="Option Text"
+                                        />
+                                        <select
+                                            className="select select-bordered select-sm w-32"
+                                            value={score}
+                                            onChange={(e) => {
+                                                const newVal = typeof opt === 'object'
+                                                    ? { ...opt, score: parseInt(e.target.value) }
+                                                    : { label: opt, score: parseInt(e.target.value) };
+                                                updateOption(index, newVal);
+                                            }}
+                                        >
+                                            <option value="0">None (0)</option>
+                                            <option value="15">Great (15)</option>
+                                            <option value="10">Good (10)</option>
+                                            <option value="5">Borderline (5)</option>
+                                            <option value="-5">Flag (-5)</option>
+                                        </select>
+                                        <button className="btn btn-square btn-sm btn-ghost text-error" onClick={() => removeOption(index)}>
+                                            &times;
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                            <button className="btn btn-sm btn-secondary btn-outline" onClick={() => addOption()}>+ Add Option</button>
                         </div>
                     )}
                 </div>
