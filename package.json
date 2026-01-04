@@ -17,6 +17,15 @@
   "author": "SMC",
   "license": "GPL-2.0-or-later",
   "devDependencies": {
-    "@wordpress/scripts": "^26.0.0"
+    "@tailwindcss/postcss": "^4.1.18",
+    "@wordpress/scripts": "^26.0.0",
+    "autoprefixer": "^10.4.23",
+    "daisyui": "^5.5.14",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18"
+  },
+  "dependencies": {
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.0.0"
   }
 }

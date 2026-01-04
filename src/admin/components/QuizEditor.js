@@ -54,7 +54,14 @@ export default function QuizEditor({ quizId, onBack }) {
     };
 
     const addQuestion = () => {
-        const newQ = { id: Date.now(), type: 'dropdown', text: '', options: [] };
+        const newQ = {
+            id: Date.now(),
+            type: 'scorable',
+            stage: 'Market & Offering',
+            indicator: '',
+            text: '',
+            options: []
+        };
         setQuestions([...questions, newQ]);
     };
 
@@ -72,21 +79,17 @@ export default function QuizEditor({ quizId, onBack }) {
     if (isLoading) return <Spinner />;
 
     return (
-        <div className="smc-quiz-editor">
+        <div className="smc-quiz-editor" style={{ maxWidth: '100%', width: '100%' }}>
             <Button isLink onClick={onBack} style={{ marginBottom: '20px' }}>&larr; {__('Back to List', 'smc-viable')}</Button>
 
             <h2>{quizId ? __('Edit Quiz', 'smc-viable') : __('Create Quiz', 'smc-viable')}</h2>
-
-            {notice && (
-                <Notice status={notice.status} onRemove={() => setNotice(null)}>
-                    {notice.text}
-                </Notice>
-            )}
 
             <TextControl
                 label={__('Quiz Title', 'smc-viable')}
                 value={title}
                 onChange={setTitle}
+                __next40pxDefaultSize
+                __nextHasNoMarginBottom
             />
 
             <hr />
@@ -106,6 +109,12 @@ export default function QuizEditor({ quizId, onBack }) {
             <hr />
 
             <Button isPrimary onClick={handleSave} isBusy={isSaving}>{__('Save Quiz', 'smc-viable')}</Button>
+
+            {notice && (
+                <Notice status={notice.status} onRemove={() => setNotice(null)} style={{ marginTop: '20px' }}>
+                    {notice.text}
+                </Notice>
+            )}
         </div>
     );
 }

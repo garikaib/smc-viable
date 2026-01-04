@@ -1,6 +1,13 @@
+@import "tailwindcss";
+@plugin "daisyui";
+
 /**
  * Main Block Styles
  */
 .wp-block-smc-quiz {
-    margin-bottom: 2em;
+    @apply mb-8;
+}
+
+.smc-quiz-root {
+    @apply bg-base-100 text-base-content font-sans p-6 rounded-lg shadow-sm;
 }

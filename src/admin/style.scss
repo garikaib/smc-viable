@@ -1,5 +1,14 @@
-.smc-quiz-editor {
-    background: #fff;
-    padding: 20px;
-    box-shadow: 0 1px 1px rgba(0,0,0,0.04);
+@import "tailwindcss";
+@plugin "daisyui";
+
+#smc-quiz-admin-root {
+    @apply bg-base-200 min-h-screen text-base-content font-sans p-4;
+    max-width: 100%;
+    width: 100%;
+}
+
+.smc-quiz-editor,
+.smc-quiz-list {
+    @apply bg-base-100 p-6 rounded-lg shadow-sm w-full;
+    max-width: 100%;
 }

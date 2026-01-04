@@ -200,6 +200,7 @@ final class SMC_Quiz_Plugin {
 	 */
 	public function register_rest_routes(): void {
 		require_once __DIR__ . '/includes/api/class-quiz-controller.php';
+        require_once __DIR__ . '/includes/class-seeder.php';
 		$controller = new \SMC\Viable\API\Quiz_Controller();
 		$controller->register_routes();
 	}
@@ -237,7 +238,7 @@ final class SMC_Quiz_Plugin {
 
 		wp_enqueue_style(
 			'smc-quiz-admin',
-			plugins_url( 'build/admin.css', __FILE__ ),
+			plugins_url( 'build/style-admin.css', __FILE__ ),
 			[],
 			$asset_file['version']
 		);
