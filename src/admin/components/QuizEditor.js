@@ -36,9 +36,7 @@ export default function QuizEditor({ quizId, onBack }) {
             id: quizId,
             title: title || __('New Quiz', 'smc-viable'),
             status: 'publish', // Force publish for now
-            meta: {
-                _smc_quiz_questions: questions,
-            }
+            questions: questions,
         };
 
         saveQuiz(data)
