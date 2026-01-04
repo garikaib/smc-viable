@@ -242,9 +242,14 @@ export default function ResultsDashboard({ answers, quiz }) {
                     </div>
 
                     <div className="mt-8">
-                        <Button isPrimary className="w-full justify-center is-large" onClick={handleEmailSubmit} isBusy={isBusy} disabled={isBusy}>
+                        <button
+                            className="btn btn-primary w-full text-lg h-auto py-3 shadow-md hover:shadow-lg transition-all"
+                            onClick={handleEmailSubmit}
+                            disabled={isBusy}
+                        >
+                            {isBusy ? <span className="loading loading-spinner"></span> : null}
                             {__('Get My Results', 'smc-viable')}
-                        </Button>
+                        </button>
                     </div>
 
                     <div className="alert alert-info shadow-sm mt-6 text-xs flex items-center">

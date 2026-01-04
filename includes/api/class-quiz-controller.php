@@ -391,7 +391,12 @@ class Quiz_Controller extends WP_REST_Controller {
         // Email logic
         $subject = sprintf( __( 'Your Assessment Results - %s', 'smc-viable' ), get_bloginfo( 'name' ) );
         $message = sprintf( __( "Hi %s,\n\nHere is your assessment report attached.\n\nBest,\n%s", 'smc-viable' ), $name, get_bloginfo( 'name' ) );
-        $headers = [ 'Content-Type: text/plain; charset=UTF-8' ];
+        $from_name = get_bloginfo( 'name' );
+        $from_email = get_option( 'admin_email' );
+        $headers = [ 
+            'Content-Type: text/plain; charset=UTF-8',
+            sprintf( 'From: %s <%s>', $from_name, $from_email ) 
+        ];
         
         // Use the tmp file directly for attachment
         $attachments = [ $file['tmp_name'] ];

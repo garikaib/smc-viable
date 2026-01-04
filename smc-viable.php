@@ -76,6 +76,25 @@ final class SMC_Quiz_Plugin {
 			'dashicons-clipboard',
 			30
 		);
+
+        // Add "Dashboard" submenu (same as parent) to prevent "SMC Quiz" appearing twice if submenu is added
+        add_submenu_page(
+            'smc-quiz',
+            __( 'Dashboard', 'smc-viable' ),
+            __( 'Dashboard', 'smc-viable' ),
+            'edit_posts',
+            'smc-quiz',
+            [ $this, 'render_admin_page' ]
+        );
+
+        // Add "Leads" Submenu
+        add_submenu_page(
+            'smc-quiz',
+            __( 'Leads', 'smc-viable' ),
+            __( 'Leads', 'smc-viable' ),
+            'edit_posts',
+            'edit.php?post_type=smc_lead'
+        );
 	}
 
 	/**
@@ -84,8 +103,6 @@ final class SMC_Quiz_Plugin {
 	public function render_admin_page(): void {
 		echo '<div id="smc-quiz-admin-root"><h2>' . esc_html__( 'Loading Quiz Admin...', 'smc-viable' ) . '</h2></div>';
 	}
-
-
 
 	/**
 	 * Register the Quiz Custom Post Type.
@@ -148,10 +165,9 @@ final class SMC_Quiz_Plugin {
 		register_post_type( 'smc_quiz', $args );
 		$this->register_lead_post_type();
 	}
-
-	/**
-	 * Register Leads Custom Post Type.
-	 */
+    
+    // ... (rest of methods)
+    
 	public function register_lead_post_type(): void {
 		$labels = [
 			'name'                  => _x( 'Leads', 'Post Type General Name', 'smc-viable' ),
@@ -172,7 +188,7 @@ final class SMC_Quiz_Plugin {
 			'hierarchical'          => false,
 			'public'                => false, // Internal use only
 			'show_ui'               => true,  // Show in admin
-			'show_in_menu'          => 'smc-quiz', // Submenu of SMC Quiz? Or 'edit.php?post_type=smc_quiz'
+			'show_in_menu'          => false, // We manually add it to submenu
 			'menu_position'         => 10,
 			'show_in_admin_bar'     => false,
 			'show_in_nav_menus'     => false,
@@ -181,12 +197,9 @@ final class SMC_Quiz_Plugin {
 			'exclude_from_search'   => true,
 			'publicly_queryable'    => false,
 			'capability_type'       => 'post',
-			'show_in_rest'          => false, // No public REST needed for now
+			'show_in_rest'          => false, 
 		];
 
-        // Hack to make it appear as submenu of our custom page 'smc-quiz'
-        // Actually, 'show_in_menu' => 'smc-quiz' works if 'smc-quiz' is a top level menu slug.
-        // My main menu is 'smc-quiz' (slug).
 		register_post_type( 'smc_lead', $args );
 	}
 
