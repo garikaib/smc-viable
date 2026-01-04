@@ -1,0 +1,22 @@
+{
+  "name": "smc-viable",
+  "version": "1.0.0",
+  "description": "SMC Viable Quiz Plugin",
+  "main": "build/index.js",
+  "scripts": {
+    "build": "wp-scripts build",
+    "start": "wp-scripts start",
+    "lint:js": "wp-scripts lint-js",
+    "packages-update": "wp-scripts packages-update"
+  },
+  "keywords": [
+    "wordpress",
+    "quiz",
+    "react"
+  ],
+  "author": "SMC",
+  "license": "GPL-2.0-or-later",
+  "devDependencies": {
+    "@wordpress/scripts": "^26.0.0"
+  }
+}

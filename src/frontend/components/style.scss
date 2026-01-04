@@ -1,0 +1,23 @@
+.smc-quiz-runner {
+    border: 1px solid #e2e4e7;
+    padding: 20px;
+    border-radius: 8px;
+    background: #fff;
+
+    .smc-quiz-question {
+        margin-bottom: 20px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #eee;
+
+        &:last-child {
+            border-bottom: none;
+        }
+    }
+}
+
+.smc-quiz-result {
+    text-align: center;
+    padding: 40px;
+    background: #f0f6fc;
+    border-radius: 8px;
+}
