@@ -211,36 +211,46 @@ export default function ResultsDashboard({ answers, quiz }) {
 
             {/* Email Gate / Lead Form */}
             {isEmailMode && !emailSent && (
-                <div className="max-w-md mx-auto bg-white p-8 rounded-xl shadow-lg border border-gray-100 text-center">
-                    <h2 className="text-2xl font-bold mb-4">{__('Enter your details to get your results', 'smc-viable')}</h2>
-                    <p className="text-gray-500 mb-6">{__('We will email you the full PDF report immediately.', 'smc-viable')}</p>
+                <div className="max-w-md mx-auto bg-white p-8 rounded-xl shadow-2xl border-t-8 border-primary">
+                    <h2 className="text-2xl font-bold mb-4 text-center">{__('Enter your details to get your results', 'smc-viable')}</h2>
+                    <p className="text-gray-500 mb-6 text-center">{__('We will email you the full PDF report immediately.', 'smc-viable')}</p>
 
                     <div className="text-left space-y-4">
                         <TextControl
                             label={__('Full Name', 'smc-viable')}
                             value={leadData.name}
                             onChange={(val) => setLeadData({ ...leadData, name: val })}
+                            __next40pxDefaultSize
+                            __nextHasNoMarginBottom
                         />
                         <TextControl
                             label={__('Email Address', 'smc-viable')}
                             value={leadData.email}
                             onChange={(val) => setLeadData({ ...leadData, email: val })}
                             type="email"
+                            __next40pxDefaultSize
+                            __nextHasNoMarginBottom
                         />
                         <TextControl
                             label={__('Phone Number', 'smc-viable')}
                             value={leadData.phone}
                             onChange={(val) => setLeadData({ ...leadData, phone: val })}
                             type="tel"
+                            __next40pxDefaultSize
+                            __nextHasNoMarginBottom
                         />
                     </div>
 
                     <div className="mt-8">
-                        <Button isPrimary isLarge className="w-full justify-center" onClick={handleEmailSubmit} isBusy={isBusy} disabled={isBusy}>
+                        <Button isPrimary className="w-full justify-center is-large" onClick={handleEmailSubmit} isBusy={isBusy} disabled={isBusy}>
                             {__('Get My Results', 'smc-viable')}
                         </Button>
                     </div>
-                    <p className="text-xs text-gray-400 mt-4">{__('Your information is secure and will not be shared.', 'smc-viable')}</p>
+
+                    <div className="alert alert-info shadow-sm mt-6 text-xs flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6 mr-2"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <span>{__('Your information is secure and will not be shared.', 'smc-viable')}</span>
+                    </div>
                 </div>
             )}
 

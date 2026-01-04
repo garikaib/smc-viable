@@ -407,6 +407,20 @@ class Quiz_Controller extends WP_REST_Controller {
         
         $new_file_path = $temp_path . 'report_' . time() . '.pdf';
         if ( move_uploaded_file( $file['tmp_name'], $new_file_path ) ) {
+             
+             // --- Save Lead ---
+             $lead_id = wp_insert_post( [
+                 'post_title'  => $name . ' - ' . date('Y-m-d H:i'),
+                 'post_type'   => 'smc_lead',
+                 'post_status' => 'publish',
+                 'meta_input'  => [
+                     '_smc_lead_email' => $email,
+                     '_smc_lead_phone' => $phone,
+                     '_smc_lead_quiz_id' => $quiz_id,
+                 ]
+             ] );
+             // -----------------
+
              $sent = wp_mail( $email, $subject, $message, $headers, [ $new_file_path ] );
              unlink( $new_file_path ); // Cleanup
              

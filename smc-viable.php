@@ -146,6 +146,48 @@ final class SMC_Quiz_Plugin {
 		];
 
 		register_post_type( 'smc_quiz', $args );
+		$this->register_lead_post_type();
+	}
+
+	/**
+	 * Register Leads Custom Post Type.
+	 */
+	public function register_lead_post_type(): void {
+		$labels = [
+			'name'                  => _x( 'Leads', 'Post Type General Name', 'smc-viable' ),
+			'singular_name'         => _x( 'Lead', 'Post Type Singular Name', 'smc-viable' ),
+			'menu_name'             => __( 'Leads', 'smc-viable' ),
+			'all_items'             => __( 'All Leads', 'smc-viable' ),
+			'view_item'             => __( 'View Lead', 'smc-viable' ),
+			'search_items'          => __( 'Search Leads', 'smc-viable' ),
+			'not_found'             => __( 'No leads found', 'smc-viable' ),
+			'items_list'            => __( 'Leads list', 'smc-viable' ),
+		];
+
+		$args = [
+			'label'                 => __( 'Lead', 'smc-viable' ),
+			'labels'                => $labels,
+			'supports'              => [ 'title', 'custom-fields' ], // Title will be Name
+			'taxonomies'            => [],
+			'hierarchical'          => false,
+			'public'                => false, // Internal use only
+			'show_ui'               => true,  // Show in admin
+			'show_in_menu'          => 'smc-quiz', // Submenu of SMC Quiz? Or 'edit.php?post_type=smc_quiz'
+			'menu_position'         => 10,
+			'show_in_admin_bar'     => false,
+			'show_in_nav_menus'     => false,
+			'can_export'            => true,
+			'has_archive'           => false,
+			'exclude_from_search'   => true,
+			'publicly_queryable'    => false,
+			'capability_type'       => 'post',
+			'show_in_rest'          => false, // No public REST needed for now
+		];
+
+        // Hack to make it appear as submenu of our custom page 'smc-quiz'
+        // Actually, 'show_in_menu' => 'smc-quiz' works if 'smc-quiz' is a top level menu slug.
+        // My main menu is 'smc-quiz' (slug).
+		register_post_type( 'smc_lead', $args );
 	}
 
 	/**

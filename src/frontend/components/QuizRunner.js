@@ -144,12 +144,13 @@ export default function QuizRunner({ quizId }) {
                             <div className="w-full mt-1">
                                 {/* TEXT INPUT */}
                                 {q.type === 'text' && (
-                                    <TextControl
+                                    <input
+                                        type="text"
+                                        className="input input-bordered w-full text-base placeholder:text-gray-500 bg-gray-50 focus:bg-white transition-colors"
                                         value={answers[q.id] || ''}
-                                        onChange={(val) => handleAnswerChange(q.id, val)}
-                                        placeholder={__('Type here...', 'smc-viable')}
-                                        className="w-full text-base"
-                                        style={{ lineHeight: '1.5', padding: '12px' }}
+                                        onChange={(e) => handleAnswerChange(q.id, e.target.value)}
+                                        placeholder={__('Type it in...', 'smc-viable')}
+                                        style={{ padding: '12px' }}
                                     />
                                 )}
 

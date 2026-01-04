@@ -187,6 +187,7 @@ export default function QuizEditor({ quizId, onBack }) {
                 value={title}
                 onChange={setTitle}
                 __next40pxDefaultSize
+                __nextHasNoMarginBottom
             />
 
             <TabPanel
@@ -237,6 +238,8 @@ export default function QuizEditor({ quizId, onBack }) {
                                             value={stage}
                                             onChange={(val) => updateStage(idx, val)}
                                             style={{ marginBottom: 0, flexGrow: 1 }}
+                                            __next40pxDefaultSize
+                                            __nextHasNoMarginBottom
                                         />
                                         <Button isDestructive variant="link" onClick={() => removeStage(idx)}>X</Button>
                                     </div>
