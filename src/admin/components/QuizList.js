@@ -111,6 +111,7 @@ export default function QuizList({ onEdit, onCreate }) {
                     <thead>
                         <tr>
                             <th>{__('Title', 'smc-viable')}</th>
+                            <th>{__('Shortcode', 'smc-viable')}</th>
                             <th>{__('Date', 'smc-viable')}</th>
                             <th>{__('Actions', 'smc-viable')}</th>
                         </tr>
@@ -120,6 +121,50 @@ export default function QuizList({ onEdit, onCreate }) {
                             <tr key={quiz.id || index}>
                                 <td>
                                     <strong>{quiz.title?.rendered || __('Untitled', 'smc-viable')}</strong>
+                                </td>
+                                <td>
+                                    <code style={{ background: '#f0f0f1', padding: '2px 5px', borderRadius: '3px' }}>
+                                        [smc_quiz id="{quiz.id}"]
+                                    </code>
+                                    <Button
+                                        isSmall
+                                        variant="secondary"
+                                        style={{ marginLeft: '10px' }}
+                                        onClick={() => {
+                                            const textToCopy = `[smc_quiz id="${quiz.id}"]`;
+                                            if (navigator.clipboard && navigator.clipboard.writeText) {
+                                                navigator.clipboard.writeText(textToCopy)
+                                                    .then(() => {
+                                                        setNotice({ status: 'success', text: __('Shortcode copied!', 'smc-viable') });
+                                                    })
+                                                    .catch(err => {
+                                                        console.error('Failed to copy: ', err);
+                                                        setNotice({ status: 'error', text: __('Failed to copy shortcode.', 'smc-viable') });
+                                                    });
+                                            } else {
+                                                // Fallback for insecure contexts or older browsers
+                                                const textArea = document.createElement("textarea");
+                                                textArea.value = textToCopy;
+                                                textArea.style.position = "fixed"; // Avoid scrolling to bottom
+                                                document.body.appendChild(textArea);
+                                                textArea.focus();
+                                                textArea.select();
+                                                try {
+                                                    document.execCommand('copy');
+                                                    setNotice({ status: 'success', text: __('Shortcode copied!', 'smc-viable') });
+                                                } catch (err) {
+                                                    console.error('Fallback copy failed: ', err);
+                                                    setNotice({ status: 'error', text: __('Failed to copy shortcode.', 'smc-viable') });
+                                                }
+                                                document.body.removeChild(textArea);
+                                            }
+
+                                            // Clear notice after 3 seconds
+                                            setTimeout(() => setNotice(null), 3000);
+                                        }}
+                                    >
+                                        {__('Copy', 'smc-viable')}
+                                    </Button>
                                 </td>
                                 <td>{quiz.date ? new Date(quiz.date).toLocaleDateString() : '-'}</td>
                                 <td>

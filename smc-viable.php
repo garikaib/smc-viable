@@ -57,6 +57,7 @@ final class SMC_Quiz_Plugin {
 	private function init_hooks(): void {
 		add_action( 'init', [ $this, 'register_post_type' ] );
 		add_action( 'init', [ $this, 'register_blocks' ] );
+		add_action( 'init', [ $this, 'register_shortcodes' ] );
 		add_action( 'rest_api_init', [ $this, 'register_rest_routes' ] );
 		add_action( 'admin_menu', [ $this, 'register_admin_menu' ] );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_admin_scripts' ] );
@@ -131,7 +132,7 @@ final class SMC_Quiz_Plugin {
 			'hierarchical'          => false,
 			'public'                => true,
 			'show_ui'               => true,
-			'show_in_menu'          => true,
+			'show_in_menu'          => false, // Hidden from default menu, using custom admin page
 			'menu_position'         => 5,
 			'menu_icon'             => 'dashicons-welcome-learn-more',
 			'show_in_admin_bar'     => true,
@@ -172,6 +173,58 @@ final class SMC_Quiz_Plugin {
 
 		// Enqueue the frontend view script
 		// Note: 'view' entry point in webpack creates view.js
+		$asset_file = include __DIR__ . '/build/view.asset.php';
+		
+		wp_enqueue_script(
+			'smc-quiz-view',
+			plugins_url( 'build/view.js', __FILE__ ),
+			$asset_file['dependencies'],
+			$asset_file['version'],
+			true
+		);
+		
+		wp_enqueue_style(
+			'smc-quiz-view',
+			plugins_url( 'build/view.css', __FILE__ ),
+			[],
+			$asset_file['version']
+		);
+
+		return sprintf(
+			'<div class="smc-quiz-root" data-quiz-id="%d">Loading Quiz...</div>',
+			esc_attr( $quiz_id )
+		);
+	}
+
+	/**
+	 * Register Shortcodes.
+	 */
+	public function register_shortcodes(): void {
+		add_shortcode( 'smc_quiz', [ $this, 'render_quiz_shortcode' ] );
+	}
+
+	/**
+	 * Render the Quiz Shortcode.
+	 *
+	 * @param array $atts Shortcode attributes.
+	 * @return string
+	 */
+	public function render_quiz_shortcode( $atts ): string {
+		$atts = shortcode_atts( [
+			'id' => 0,
+		], $atts, 'smc_quiz' );
+
+		// Reuse logic from block renderer (it expects array with quizId)
+		// We'll just manually call it or replicate the logic since it's simple.
+		// Let's replicate for clarity and since block attrs keys differ slightly (camelCase vs snake_case).
+		
+		$quiz_id = (int) $atts['id'];
+		
+		if ( ! $quiz_id ) {
+			return '<p>' . __( 'Please provide a quiz ID.', 'smc-viable' ) . '</p>';
+		}
+
+		// Enqueue the frontend view script same as block
 		$asset_file = include __DIR__ . '/build/view.asset.php';
 		
 		wp_enqueue_script(
