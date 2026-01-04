@@ -34,6 +34,18 @@ export default function QuizRunner({ quizId }) {
         }
     }, [answers, quizId]);
 
+    // Data Fetching: Load Quiz Questions
+    useEffect(() => {
+        if (!quizId) return;
+        setLoading(true);
+        apiFetch({ path: `/smc/v1/quizzes/${quizId}` })
+            .then((data) => {
+                setQuiz(data);
+            })
+            .catch((err) => console.error(err))
+            .finally(() => setLoading(false));
+    }, [quizId]);
+
     // Group questions by stage
     const stages = useMemo(() => {
         if (!quiz) return [];
