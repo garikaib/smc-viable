@@ -2,7 +2,7 @@ import { useState, useRef, useMemo } from '@wordpress/element';
 import { Button } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 
 export default function ResultsDashboard({ answers, quiz }) {
     const reportRef = useRef(null);
@@ -72,33 +72,20 @@ export default function ResultsDashboard({ answers, quiz }) {
         try {
             const element = reportRef.current;
 
-            // Temporary fix for oklch colors: valid html2canvas needs older color formats.
-            // We can try to clone and replace styles, or just rely on ignoring the unsupported function if possible.
-            // But html2canvas throws on parse. 
-            // Better: use a cleaner DOM for export or ensure styles there are simple hex/rgb.
-            // The hidden report uses Tailwind classes like text-green-700 which might resolve to oklch in v4.
-            // Let's rely on standard hex colors inline for the PDF report container to be safe.
+            // html-to-image: More robust handling of modern CSS
+            const dataUrl = await toPng(element, { quality: 0.95, backgroundColor: '#ffffff' });
 
-            const canvas = await html2canvas(element, {
-                scale: 2,
-                useCORS: true,
-                logging: false,
-                onclone: (clonedDoc) => {
-                    // Optional: Manually fix colors if needed, but defining them in CSS as hex is safer.
-                }
-            });
-
-            const imgData = canvas.toDataURL('image/png');
             const pdf = new jsPDF({
                 orientation: 'portrait',
                 unit: 'mm',
                 format: 'a4'
             });
 
-            const imgWidth = 210;
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            const imgProps = pdf.getImageProperties(dataUrl);
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
-            pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+            pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
             pdf.save(`SMC_Assessment.pdf`);
         } catch (error) {
             console.error('Export failed', error);
