@@ -71,10 +71,21 @@ export default function ResultsDashboard({ answers, quiz }) {
 
         try {
             const element = reportRef.current;
+
+            // Temporary fix for oklch colors: valid html2canvas needs older color formats.
+            // We can try to clone and replace styles, or just rely on ignoring the unsupported function if possible.
+            // But html2canvas throws on parse. 
+            // Better: use a cleaner DOM for export or ensure styles there are simple hex/rgb.
+            // The hidden report uses Tailwind classes like text-green-700 which might resolve to oklch in v4.
+            // Let's rely on standard hex colors inline for the PDF report container to be safe.
+
             const canvas = await html2canvas(element, {
                 scale: 2,
                 useCORS: true,
-                logging: false
+                logging: false,
+                onclone: (clonedDoc) => {
+                    // Optional: Manually fix colors if needed, but defining them in CSS as hex is safer.
+                }
             });
 
             const imgData = canvas.toDataURL('image/png');
@@ -210,27 +221,27 @@ export default function ResultsDashboard({ answers, quiz }) {
 
             {/* Actions */}
             <div className="flex justify-center pt-8">
-                <Button isSecondary isOutline onClick={exportPDF} disabled={isExporting}>
+                <Button variant="secondary" onClick={exportPDF} disabled={isExporting}>
                     {isExporting ? __('Generating...', 'smc-viable') : __('Download PDF Report', 'smc-viable')}
                 </Button>
             </div>
 
-            {/* Hidden Report for PDF Generation */}
+            {/* Hidden Report for PDF Generation - using inline HEX colors for html2canvas compatibility */}
             <div className="fixed top-0 left-[-9999px] w-[210mm] min-h-[297mm] p-10 font-sans bg-white text-black" ref={reportRef}>
-                <div className="flex justify-between items-start pb-4 mb-8 border-b-2 border-red-700">
-                    <h1 className="text-3xl font-bold text-green-700">{__('Readiness Report', 'smc-viable')}</h1>
+                <div className="flex justify-between items-start pb-4 mb-8 border-b-2" style={{ borderColor: '#b91c1c' }}>
+                    <h1 className="text-3xl font-bold" style={{ color: '#15803d' }}>{__('Readiness Report', 'smc-viable')}</h1>
                     <p className="text-gray-500">{new Date().toLocaleDateString()}</p>
                 </div>
 
                 <div className="flex items-center gap-8 mb-8">
                     <div className="w-1/3 text-center">
-                        <div className="mx-auto flex items-center justify-center rounded-full border-8 border-green-700 h-24 w-24">
+                        <div className="mx-auto flex items-center justify-center rounded-full border-8 h-24 w-24" style={{ borderColor: '#15803d' }}>
                             <span className="text-2xl font-bold">{readinessRating.percent}%</span>
                         </div>
                         <div className="text-sm font-bold mt-2 uppercase text-gray-600">{__('Readiness Score', 'smc-viable')}</div>
                     </div>
                     <div className="w-2/3">
-                        <h2 className={`text-2xl font-bold ${readinessRating.level.includes('Critical') ? 'text-red-700' : 'text-green-700'}`}>
+                        <h2 className="text-2xl font-bold" style={{ color: readinessRating.level.includes('Critical') ? '#b91c1c' : '#15803d' }}>
                             {readinessRating.level}
                         </h2>
                         <p className="mt-1 text-gray-600">
@@ -241,7 +252,7 @@ export default function ResultsDashboard({ answers, quiz }) {
 
                 {/* PDF Breakdown Table */}
                 <div className="mb-8">
-                    <h3 className="text-lg font-bold mb-4 pb-1 text-green-700 border-b border-gray-200">{__('Stage Breakdown', 'smc-viable')}</h3>
+                    <h3 className="text-lg font-bold mb-4 pb-1 border-b border-gray-200" style={{ color: '#15803d' }}>{__('Stage Breakdown', 'smc-viable')}</h3>
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="text-left bg-gray-100">
@@ -257,8 +268,8 @@ export default function ResultsDashboard({ answers, quiz }) {
                                     <td className="p-2">{data.total}/{data.max}</td>
                                     <td className="p-2">
                                         {data.flags > 0 ?
-                                            <span className="font-bold text-red-700">{data.flags} Flags</span> :
-                                            (data.total / data.max < 0.5 ? <span className="font-bold text-yellow-600">Weak</span> : <span className="font-bold text-green-700">Good</span>)
+                                            <span className="font-bold" style={{ color: '#b91c1c' }}>{data.flags} Flags</span> :
+                                            (data.total / data.max < 0.5 ? <span className="font-bold" style={{ color: '#ca8a04' }}>Weak</span> : <span className="font-bold" style={{ color: '#15803d' }}>Good</span>)
                                         }
                                     </td>
                                 </tr>
