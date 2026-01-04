@@ -71,6 +71,16 @@ class Quiz_Controller extends WP_REST_Controller {
             ]
         );
 
+        register_rest_route(
+            $this->namespace,
+            '/leads',
+            [
+                'methods'             => WP_REST_Server::READABLE,
+                'callback'            => [ $this, 'get_leads' ],
+                'permission_callback' => [ $this, 'get_items_permissions_check' ],
+            ]
+        );
+
         // Single quiz operations (GET, DELETE, UPDATE)
         register_rest_route(
             $this->namespace,
@@ -373,11 +383,15 @@ class Quiz_Controller extends WP_REST_Controller {
         $phone = sanitize_text_field( $params['phone'] ?? '' );
         $quiz_id = (int) ( $params['quiz_id'] ?? 0 );
 
+        error_log( 'SMC Quiz: Email submission started.' );
+
         if ( empty( $email ) || ! is_email( $email ) ) {
+            error_log( 'SMC Quiz: Invalid email: ' . $email );
             return new WP_Error( 'invalid_email', __( 'Valid email required.', 'smc-viable' ), [ 'status' => 400 ] );
         }
 
         if ( empty( $parameters['report'] ) ) {
+             error_log( 'SMC Quiz: Missing report file.' );
             return new WP_Error( 'missing_file', __( 'Report file is missing.', 'smc-viable' ), [ 'status' => 400 ] );
         }
 
@@ -424,12 +438,14 @@ class Quiz_Controller extends WP_REST_Controller {
                      '_smc_lead_quiz_id' => $quiz_id,
                  ]
              ] );
+             error_log( 'SMC Quiz: Lead saved with ID: ' . $lead_id );
              // -----------------
 
              $sent = wp_mail( $email, $subject, $message, $headers, [ $new_file_path ] );
              unlink( $new_file_path ); // Cleanup
              
              if ( $sent ) {
+                 error_log( 'SMC Quiz: Email sent successfully to ' . $email );
                  // Notify Admin as well? User requirement: "admin can ask for email... report"
                  // Maybe send copy to admin?
                  $admin_email = get_option( 'admin_email' );

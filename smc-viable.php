@@ -93,7 +93,8 @@ final class SMC_Quiz_Plugin {
             __( 'Leads', 'smc-viable' ),
             __( 'Leads', 'smc-viable' ),
             'edit_posts',
-            'edit.php?post_type=smc_lead'
+            'smc-leads',
+            [ $this, 'render_admin_page' ]
         );
 	}
 
