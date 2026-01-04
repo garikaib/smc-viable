@@ -102,8 +102,8 @@ export default function QuizRunner({ quizId }) {
     }
 
     return (
-        <div className="smc-quiz-runner bg-white p-6 md:p-10 rounded-xl shadow-lg border border-gray-100 max-w-4xl mx-auto transition-all duration-300">
-            <h2 className="text-2xl md:text-3xl font-extrabold mb-6 md:mb-8 text-gray-800 border-b border-gray-100 pb-4 tracking-tight">{quiz.title.rendered}</h2>
+        <div className="smc-quiz-runner max-w-4xl mx-auto transition-all duration-300">
+            <h2 className="text-2xl md:text-3xl font-extrabold mb-6 md:mb-8 text-gray-800 border-b border-gray-200 pb-4 tracking-tight">{quiz.title.rendered}</h2>
 
             {/* Progress Bar */}
             <div className="mb-8 md:mb-12">
@@ -119,9 +119,9 @@ export default function QuizRunner({ quizId }) {
             </div>
 
             {/* Questions - Animated Keyed Wrapper */}
-            <div key={currentStageIndex} className="space-y-8 animate-fade-in">
+            <div key={currentStageIndex} className="space-y-6 md:space-y-8 animate-fade-in">
                 {currentStage.items.map((q, index) => (
-                    <div key={q.id || index} className="card bg-white border border-gray-200 p-6 md:p-8 rounded-xl shadow-sm hover:shadow-md transition-all duration-300">
+                    <div key={q.id || index} className="bg-transparent border-b border-gray-200 pb-8 md:pb-10 mb-2">
                         <div className="flex flex-col gap-5 md:gap-6">
 
                             {/* Question Info */}
@@ -134,7 +134,7 @@ export default function QuizRunner({ quizId }) {
                                     <p className="text-xs md:text-sm text-gray-500 mt-2 italic">{q.key_text}</p>
                                 )}
                                 {q.guidance && (
-                                    <div className="mt-4 p-4 bg-blue-50 rounded-lg text-sm text-blue-800 leading-relaxed border-l-4 border-blue-500">
+                                    <div className="mt-4 p-4 bg-gray-50 rounded-lg text-sm text-gray-600 leading-relaxed border-l-4 border-gray-300">
                                         {q.guidance}
                                     </div>
                                 )}
@@ -164,9 +164,9 @@ export default function QuizRunner({ quizId }) {
                                             // Determine styles based on selection
                                             let containerClass = "relative flex items-center p-3 md:p-4 rounded-lg border cursor-pointer transition-all duration-200 group";
                                             if (isSelected) {
-                                                containerClass += " border-primary bg-primary/5 shadow-sm ring-1 ring-primary";
+                                                containerClass += " border-primary bg-primary/5 ring-1 ring-primary";
                                             } else {
-                                                containerClass += " border-gray-200 hover:border-blue-400 hover:bg-gray-50";
+                                                containerClass += " border-gray-200 hover:border-gray-400 hover:bg-gray-50/50";
                                             }
 
                                             return (
@@ -212,7 +212,7 @@ export default function QuizRunner({ quizId }) {
             </div>
 
             {/* Navigation */}
-            <div className="flex justify-between mt-10 pt-6 border-t border-base-200">
+            <div className="flex justify-between mt-10">
                 <Button
                     className="btn btn-ghost"
                     onClick={prevStage}
@@ -221,7 +221,7 @@ export default function QuizRunner({ quizId }) {
                     {__('Back', 'smc-viable')}
                 </Button>
                 <Button
-                    className="btn btn-secondary text-white btn-wide"
+                    className="btn btn-primary text-white btn-wide"
                     onClick={nextStage}
                 >
                     {currentStageIndex === stages.length - 1 ? __('Finish & Review', 'smc-viable') : __('Next Stage', 'smc-viable')}
