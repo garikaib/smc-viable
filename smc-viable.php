@@ -84,38 +84,7 @@ final class SMC_Quiz_Plugin {
 		echo '<div id="smc-quiz-admin-root"><h2>' . esc_html__( 'Loading Quiz Admin...', 'smc-viable' ) . '</h2></div>';
 	}
 
-	/**
-	 * Enqueue Admin Scripts.
-	 *
-	 * @param string $hook Current admin page hook.
-	 */
-	public function enqueue_admin_scripts( string $hook ): void {
-		if ( 'toplevel_page_smc-quiz' !== $hook ) {
-			return;
-		}
 
-		$asset_file = include __DIR__ . '/build/index.asset.php';
-
-		wp_enqueue_script(
-			'smc-quiz-admin',
-			plugins_url( 'build/index.js', __FILE__ ),
-			$asset_file['dependencies'],
-			$asset_file['version'],
-			true
-		);
-
-		wp_localize_script( 'smc-quiz-admin', 'smcQuizSettings', [
-			'root'    => esc_url_raw( rest_url() ),
-			'nonce'   => wp_create_nonce( 'wp_rest' ),
-		] );
-
-		wp_enqueue_style(
-			'smc-quiz-admin',
-			plugins_url( 'build/index.css', __FILE__ ),
-			[],
-			$asset_file['version']
-		);
-	}
 
 	/**
 	 * Register the Quiz Custom Post Type.
