@@ -213,8 +213,17 @@ export default function ResultsDashboard({ answers, quiz }) {
                 </Button>
             </div>
 
-            {/* Hidden Report for PDF Generation - using inline HEX colors for html2canvas compatibility */}
-            <div className="fixed top-0 left-[-9999px] w-[210mm] min-h-[297mm] p-10 font-sans bg-white text-black" ref={reportRef}>
+            {/* Hidden Report for PDF Generation - using inline HEX colors for html2canvas compatibility
+                Using z-index and absolute positioning instead of far-off-screen to ensure rendering.
+             */}
+            <div
+                className="absolute top-0 left-0 w-[210mm] min-h-[297mm] p-10 font-sans bg-white text-black -z-50 invisible"
+                ref={reportRef}
+                style={{ visibility: isExporting ? 'visible' : 'hidden' }} // Only make visible to DOM/Capturer during export if needed, or keep 'visible' but behind. 
+            // html-to-image needs it to be rendered. 'visibility: hidden' might block it.
+            // Let's try z-index -50 and opacity 0? No, opacity might affect capture.
+            // Best: Absolute 0,0, z-index -50.
+            >
                 <div className="flex justify-between items-start pb-4 mb-8 border-b-2" style={{ borderColor: '#b91c1c' }}>
                     <h1 className="text-3xl font-bold" style={{ color: '#15803d' }}>{__('Readiness Report', 'smc-viable')}</h1>
                     <p className="text-gray-500">{new Date().toLocaleDateString()}</p>
