@@ -27,10 +27,7 @@ export default function QuizRunner({ quizId }) {
     // Group questions by stage
     const stages = useMemo(() => {
         if (!quiz) return [];
-        const questions = quiz.meta?._smc_quiz_questions || []; // Handle case if questions at root? The editor saves them to meta, but checks import. 
-        // Wait! I fixed Editor to send 'questions' root, but getting quiz uses standard GET /quizzes/id.
-        // Controller returns `meta._smc_quiz_questions`. So this is correct.
-
+        const questions = quiz.meta?._smc_quiz_questions || [];
         const groups = {};
         questions.forEach(q => {
             const stage = q.stage || 'Other';
@@ -81,13 +78,13 @@ export default function QuizRunner({ quizId }) {
     }
 
     return (
-        <div className="smc-quiz-runner bg-base-100 p-6 rounded-lg shadow-sm max-w-4xl mx-auto">
-            <h2 className="text-3xl font-bold mb-8 text-primary border-b pb-4">{quiz.title.rendered}</h2>
+        <div className="smc-quiz-runner bg-base-100 p-4 md:p-8 rounded-lg shadow-sm max-w-4xl mx-auto">
+            <h2 className="text-2xl md:text-3xl font-bold mb-6 md:mb-8 text-primary border-b pb-4">{quiz.title.rendered}</h2>
 
             {/* Progress Bar */}
-            <div className="mb-10">
+            <div className="mb-8 md:mb-10">
                 <div className="flex justify-between items-end mb-2">
-                    <h3 className="text-xl font-bold">{currentStage.name}</h3>
+                    <h3 className="text-lg md:text-xl font-bold">{currentStage.name}</h3>
                     <span className="text-xs text-base-content/60">{__('Stage', 'smc-viable')} {currentStageIndex + 1} / {stages.length}</span>
                 </div>
                 <progress
@@ -98,50 +95,50 @@ export default function QuizRunner({ quizId }) {
             </div>
 
             {/* Questions */}
-            <div className="space-y-8">
+            <div className="space-y-6 md:space-y-8">
                 {currentStage.items.map((q, index) => (
-                    <div key={q.id || index} className="card bg-base-100 border border-base-200 p-8 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex flex-col gap-6">
+                    <div key={q.id || index} className="card bg-base-100 border border-base-200 p-5 md:p-8 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex flex-col gap-4 md:gap-6">
 
                             {/* Question Info */}
                             <div className="w-full">
                                 {q.indicator && (
-                                    <div className="badge badge-secondary badge-outline mb-3 p-3">{q.indicator}</div>
+                                    <div className="badge badge-secondary badge-outline mb-2 md:mb-3 p-2 md:p-3 text-xs md:text-sm">{q.indicator}</div>
                                 )}
-                                <p className="font-bold text-xl leading-relaxed text-base-content">{q.text || q.indicator}</p>
+                                <p className="font-bold text-lg md:text-xl leading-relaxed text-base-content">{q.text || q.indicator}</p>
                                 {q.key_text && q.type === 'scorable' && (
-                                    <p className="text-sm text-base-content/60 mt-2 italic">{q.key_text}</p>
+                                    <p className="text-xs md:text-sm text-base-content/60 mt-2 italic">{q.key_text}</p>
                                 )}
                                 {q.guidance && (
-                                    <div className="mt-3 p-4 bg-base-200 rounded-lg text-sm text-base-content/80 leading-relaxed border-l-4 border-primary">
+                                    <div className="mt-3 p-3 md:p-4 bg-base-200 rounded-lg text-sm text-base-content/80 leading-relaxed border-l-4 border-primary">
                                         {q.guidance}
                                     </div>
                                 )}
                             </div>
 
                             {/* Input Area */}
-                            <div className="w-full mt-2">
+                            <div className="w-full mt-1 md:mt-2">
                                 {/* TEXT INPUT */}
                                 {q.type === 'text' && (
                                     <TextControl
                                         value={answers[q.id] || ''}
                                         onChange={(val) => handleAnswerChange(q.id, val)}
                                         placeholder={__('Type here...', 'smc-viable')}
-                                        className="w-full text-lg"
-                                        style={{ lineHeight: '1.5', padding: '12px' }}
+                                        className="w-full text-base md:text-lg"
+                                        style={{ lineHeight: '1.5', padding: '10px' }}
                                     />
                                 )}
 
                                 {/* OPTIONS (Radio Style) - Prioritize if options exist */}
                                 {((q.type === 'select' || q.type === 'scorable') && q.options && q.options.length > 0) && (
-                                    <div className="flex flex-col gap-3">
+                                    <div className="flex flex-col gap-2 md:gap-3">
                                         {q.options.map((opt, idx) => {
                                             const label = typeof opt === 'object' ? opt.label : opt;
                                             const value = label; // Use label as value
                                             const isSelected = answers[q.id] === value;
 
                                             // Determine styles based on selection
-                                            let containerClass = "relative flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 group";
+                                            let containerClass = "relative flex items-center p-3 md:p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 group";
                                             if (isSelected) {
                                                 containerClass += " border-primary bg-primary/5 ring-1 ring-primary";
                                             } else {
@@ -156,9 +153,9 @@ export default function QuizRunner({ quizId }) {
                                                         value={value}
                                                         checked={isSelected}
                                                         onChange={() => handleAnswerChange(q.id, value)}
-                                                        className="radio radio-primary mr-4"
+                                                        className="radio radio-sm md:radio-md radio-primary mr-3 md:mr-4"
                                                     />
-                                                    <span className={`text-lg font-medium flex-grow ${isSelected ? 'text-primary' : 'text-base-content'}`}>
+                                                    <span className={`text-base md:text-lg font-medium flex-grow ${isSelected ? 'text-primary' : 'text-base-content'}`}>
                                                         {label}
                                                     </span>
                                                 </label>
@@ -191,7 +188,7 @@ export default function QuizRunner({ quizId }) {
             </div>
 
             {/* Navigation */}
-            <div className="flex justify-between mt-10 pt-6 border-t border-base-200">
+            <div className="flex justify-between mt-8 md:mt-10 pt-4 md:pt-6 border-t border-base-200">
                 <Button
                     className="btn btn-ghost"
                     onClick={prevStage}
