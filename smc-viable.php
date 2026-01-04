@@ -183,6 +183,11 @@ final class SMC_Quiz_Plugin {
 			true
 		);
 		
+		wp_localize_script( 'smc-quiz-view', 'wpApiSettings', [
+			'root'  => esc_url_raw( rest_url() ),
+			'nonce' => wp_create_nonce( 'wp_rest' ),
+		] );
+		
 		wp_enqueue_style(
 			'smc-quiz-view',
 			plugins_url( 'build/view.css', __FILE__ ),
@@ -234,6 +239,11 @@ final class SMC_Quiz_Plugin {
 			$asset_file['version'],
 			true
 		);
+		
+		wp_localize_script( 'smc-quiz-view', 'wpApiSettings', [
+			'root'  => esc_url_raw( rest_url() ),
+			'nonce' => wp_create_nonce( 'wp_rest' ),
+		] );
 		
 		wp_enqueue_style(
 			'smc-quiz-view',
