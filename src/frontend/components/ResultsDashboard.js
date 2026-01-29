@@ -4,6 +4,21 @@ import { __ } from '@wordpress/i18n';
 import apiFetch from '@wordpress/api-fetch';
 import jsPDF from 'jspdf';
 import { toPng } from 'html-to-image';
+import { z } from 'zod';
+
+// Zod Validation Schema
+const leadFormSchema = z.object({
+    name: z.string()
+        .min(2, 'Name must be at least 2 characters')
+        .max(100, 'Name is too long')
+        .regex(/^[a-zA-Z\s'-]+$/, 'Name can only contain letters, spaces, hyphens and apostrophes'),
+    email: z.string()
+        .email('Please enter a valid email address')
+        .max(255, 'Email is too long'),
+    phone: z.string()
+        .optional()
+        .refine(val => !val || /^[\d\s+\-()]{7,20}$/.test(val), 'Please enter a valid phone number')
+});
 
 export default function ResultsDashboard({ answers, quiz }) {
     const reportRef = useRef(null);
@@ -13,6 +28,7 @@ export default function ResultsDashboard({ answers, quiz }) {
     const [leadData, setLeadData] = useState({ name: '', email: '', phone: '' });
     const [sendingEmail, setSendingEmail] = useState(false);
     const [emailSent, setEmailSent] = useState(false);
+    const [formErrors, setFormErrors] = useState({});
 
     const questions = quiz.meta?._smc_quiz_questions || [];
     const settings = quiz.meta?._smc_quiz_settings || {};
@@ -95,17 +111,31 @@ export default function ResultsDashboard({ answers, quiz }) {
         });
     }, [totalScore, dashboardConfig]);
 
-    // Generate PDF Blob
+    // Generate PDF Blob - Optimized for smaller file size
     const generatePDF = async () => {
         if (!reportRef.current) return null;
         const element = reportRef.current;
-        const dataUrl = await toPng(element, { quality: 0.95, backgroundColor: '#ffffff' });
-        const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+        // Capture with balanced quality/size settings
+        const dataUrl = await toPng(element, {
+            quality: 0.8,
+            backgroundColor: '#ffffff',
+            pixelRatio: 1.5
+        });
+
+        const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4',
+            compress: true
+        });
+
         const imgProps = pdf.getImageProperties(dataUrl);
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-        pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
-        return pdf; // Return jsPDF object
+
+        pdf.addImage(dataUrl, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'MEDIUM');
+        return pdf;
     };
 
     const handleDownload = async () => {
@@ -121,24 +151,42 @@ export default function ResultsDashboard({ answers, quiz }) {
         }
     };
 
+    const validateForm = () => {
+        try {
+            leadFormSchema.parse(leadData);
+            setFormErrors({});
+            return true;
+        } catch (error) {
+            if (error instanceof z.ZodError) {
+                const errors = {};
+                error.errors.forEach(err => {
+                    errors[err.path[0]] = err.message;
+                });
+                setFormErrors(errors);
+            }
+            return false;
+        }
+    };
+
     const handleEmailSubmit = async () => {
-        if (!leadData.email || !leadData.name) {
-            alert(__('Please fill in required fields.', 'smc-viable'));
+        // Validate with Zod
+        if (!validateForm()) {
             return;
         }
+
         setSendingEmail(true);
+        setFormErrors({});
+
+        // Show results immediately - user has provided their email
+        setEmailSent(true);
 
         try {
-            // 1. Generate PDF
-            // We need to temporarily show the report container if it's hidden or ensure it's rendered
-            // It is rendered but invisible (z-index -50, invisible). html-to-image handles it usually, 
-            // but sometimes visibility:hidden prevents capture. 
-            // We'll trust the current CSS which uses visibility toggling.
-            // Wait, if isEmailMode && !emailSent, the Dashboard is NOT shown, so reportRef might be null?
-            // Correct. We need to render the Hidden Report ALWAYS at bottom of component.
+            // Small delay to ensure the report is rendered and visible
+            await new Promise(resolve => setTimeout(resolve, 100));
 
+            // 1. Generate PDF from now-visible report
             const pdf = await generatePDF();
-            if (!pdf) throw new Error("PDF Generation Failed");
+            if (!pdf) throw new Error("PDF Generation Failed - Report element not found");
 
             const pdfBlob = pdf.output('blob');
             const file = new File([pdfBlob], "report.pdf", { type: "application/pdf" });
@@ -146,25 +194,46 @@ export default function ResultsDashboard({ answers, quiz }) {
             // 2. Send to API
             const formData = new FormData();
             formData.append('quiz_id', quiz.id);
-            formData.append('name', leadData.name);
-            formData.append('email', leadData.email);
-            formData.append('phone', leadData.phone);
+            formData.append('name', leadData.name.trim());
+            formData.append('email', leadData.email.trim().toLowerCase());
+            formData.append('phone', leadData.phone.trim());
             formData.append('report', file);
 
-            // Need valid nonce for fetch 
-            // apiFetch handles standard JSON. For FormData, we might need manual fetch or pass body directly.
-            // wp-api-fetch supports FormData automatically if body is FormData.
-
-            await apiFetch({
+            const response = await apiFetch({
                 path: '/smc/v1/submit-email',
                 method: 'POST',
-                body: formData, // apiFetch won't stringify FormData
+                body: formData,
             });
 
-            setEmailSent(true);
+            if (response.success) {
+                // If email failed but we got a download URL, show it
+                if (response.download_url) {
+                    alert(__('Your report is ready! If you don\'t receive an email, download it here: ', 'smc-viable') + response.download_url);
+                }
+            } else {
+                throw new Error(response.message || 'Unknown error occurred');
+            }
         } catch (e) {
-            console.error(e);
-            alert(e.message || __('Failed to send email.', 'smc-viable'));
+            console.error('Email submission error:', e);
+
+            // Parse API error messages
+            let errorMessage = __('Failed to send email. Please try again.', 'smc-viable');
+
+            if (e.code === 'duplicate_email') {
+                errorMessage = __('This email has already submitted an assessment. Please use a different email.', 'smc-viable');
+                setFormErrors({ email: errorMessage });
+            } else if (e.code === 'invalid_email') {
+                errorMessage = __('Please enter a valid email address.', 'smc-viable');
+                setFormErrors({ email: errorMessage });
+            } else if (e.code === 'mail_failed') {
+                errorMessage = __('Email delivery failed. Your submission was saved - please contact support.', 'smc-viable');
+            } else if (e.message) {
+                errorMessage = e.message;
+            }
+
+            if (!formErrors.email) {
+                alert(errorMessage);
+            }
         } finally {
             setSendingEmail(false);
         }
@@ -216,29 +285,53 @@ export default function ResultsDashboard({ answers, quiz }) {
                     <p className="text-gray-500 mb-6 text-center">{__('We will email you the full PDF report immediately.', 'smc-viable')}</p>
 
                     <div className="text-left space-y-4">
-                        <TextControl
-                            label={__('Full Name', 'smc-viable')}
-                            value={leadData.name}
-                            onChange={(val) => setLeadData({ ...leadData, name: val })}
-                            __next40pxDefaultSize
-                            __nextHasNoMarginBottom
-                        />
-                        <TextControl
-                            label={__('Email Address', 'smc-viable')}
-                            value={leadData.email}
-                            onChange={(val) => setLeadData({ ...leadData, email: val })}
-                            type="email"
-                            __next40pxDefaultSize
-                            __nextHasNoMarginBottom
-                        />
-                        <TextControl
-                            label={__('Phone Number', 'smc-viable')}
-                            value={leadData.phone}
-                            onChange={(val) => setLeadData({ ...leadData, phone: val })}
-                            type="tel"
-                            __next40pxDefaultSize
-                            __nextHasNoMarginBottom
-                        />
+                        <div className="form-control">
+                            <TextControl
+                                label={__('Full Name *', 'smc-viable')}
+                                value={leadData.name}
+                                onChange={(val) => {
+                                    setLeadData({ ...leadData, name: val });
+                                    if (formErrors.name) setFormErrors({ ...formErrors, name: null });
+                                }}
+                                __next40pxDefaultSize
+                                __nextHasNoMarginBottom
+                            />
+                            {formErrors.name && (
+                                <span className="text-error text-sm mt-1">{formErrors.name}</span>
+                            )}
+                        </div>
+                        <div className="form-control">
+                            <TextControl
+                                label={__('Email Address *', 'smc-viable')}
+                                value={leadData.email}
+                                onChange={(val) => {
+                                    setLeadData({ ...leadData, email: val });
+                                    if (formErrors.email) setFormErrors({ ...formErrors, email: null });
+                                }}
+                                type="email"
+                                __next40pxDefaultSize
+                                __nextHasNoMarginBottom
+                            />
+                            {formErrors.email && (
+                                <span className="text-error text-sm mt-1">{formErrors.email}</span>
+                            )}
+                        </div>
+                        <div className="form-control">
+                            <TextControl
+                                label={__('Phone Number', 'smc-viable')}
+                                value={leadData.phone}
+                                onChange={(val) => {
+                                    setLeadData({ ...leadData, phone: val });
+                                    if (formErrors.phone) setFormErrors({ ...formErrors, phone: null });
+                                }}
+                                type="tel"
+                                __next40pxDefaultSize
+                                __nextHasNoMarginBottom
+                            />
+                            {formErrors.phone && (
+                                <span className="text-error text-sm mt-1">{formErrors.phone}</span>
+                            )}
+                        </div>
                     </div>
 
                     <div className="mt-8">
@@ -361,10 +454,10 @@ export default function ResultsDashboard({ answers, quiz }) {
                 </>
             )}
 
-            {/* Hidden Report for PDF Generation */}
-            {/* Must be always present for generation, even if user hasn't seen results yet (for email gen) */}
+            {/* Hidden Report for PDF Generation - positioned off-screen so html-to-image can capture it */}
             <div
-                className="absolute top-0 left-0 w-[210mm] min-h-[297mm] p-10 font-sans bg-white text-black -z-50 invisible"
+                className="fixed w-[210mm] min-h-[297mm] p-10 font-sans bg-white text-black"
+                style={{ left: '-9999px', top: 0 }}
                 ref={reportRef}
             >
                 {/* Header */}

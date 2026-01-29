@@ -6,8 +6,14 @@ import { __ } from '@wordpress/i18n';
 export default function LeadList() {
     const [leads, setLeads] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [deleting, setDeleting] = useState(null); // Track which lead is being deleted
 
     useEffect(() => {
+        fetchLeads();
+    }, []);
+
+    const fetchLeads = () => {
+        setLoading(true);
         apiFetch({ path: '/smc/v1/leads' })
             .then(data => {
                 setLeads(data);
@@ -17,30 +23,68 @@ export default function LeadList() {
                 console.error(err);
                 setLoading(false);
             });
-    }, []);
+    };
 
-    const handleExport = () => {
-        // Simple CSV Export
-        const headers = ['Date', 'Name', 'Email', 'Phone', 'Quiz ID'];
-        const rows = leads.map(l => [
-            l.date,
-            `"${l.name || ''}"`, // Quote to handle commas
-            l.email,
-            l.phone,
-            l.quiz_id
-        ]);
+    const handleDelete = async (id, name) => {
+        if (!window.confirm(`Are you sure you want to delete the lead "${name}"? This action cannot be undone.`)) {
+            return;
+        }
 
-        const csvContent = "data:text/csv;charset=utf-8,"
-            + headers.join(",") + "\n"
-            + rows.map(e => e.join(",")).join("\n");
+        setDeleting(id);
+        try {
+            await apiFetch({
+                path: `/smc/v1/leads/${id}`,
+                method: 'DELETE',
+            });
+            setLeads(leads.filter(l => l.id !== id));
+        } catch (err) {
+            console.error('Failed to delete lead:', err);
+            alert('Failed to delete lead. Please try again.');
+        } finally {
+            setDeleting(null);
+        }
+    };
 
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "smc_leads_export.csv");
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+    const handleExportExcel = async () => {
+        // Dynamically load SheetJS if not already loaded
+        if (!window.XLSX) {
+            await new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js';
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        const XLSX = window.XLSX;
+
+        // Prepare data for Excel
+        const excelData = leads.map(l => ({
+            'Date': new Date(l.date).toLocaleString(),
+            'Name': l.name || '',
+            'Email': l.email,
+            'Phone': l.phone,
+            'Quiz ID': l.quiz_id
+        }));
+
+        // Create workbook and worksheet
+        const ws = XLSX.utils.json_to_sheet(excelData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Leads');
+
+        // Auto-size columns
+        const colWidths = [
+            { wch: 20 }, // Date
+            { wch: 25 }, // Name
+            { wch: 30 }, // Email
+            { wch: 15 }, // Phone
+            { wch: 10 }, // Quiz ID
+        ];
+        ws['!cols'] = colWidths;
+
+        // Download
+        XLSX.writeFile(wb, `smc_leads_${new Date().toISOString().split('T')[0]}.xlsx`);
     };
 
     if (loading) return <Spinner />;
@@ -49,9 +93,14 @@ export default function LeadList() {
         <div className="smc-leads-dashboard p-4">
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold">{__('Leads Dashboard', 'smc-viable')}</h1>
-                <Button isPrimary onClick={handleExport} disabled={leads.length === 0}>
-                    {__('Export CSV', 'smc-viable')}
-                </Button>
+                <div className="flex gap-2">
+                    <Button isSecondary onClick={fetchLeads}>
+                        {__('Refresh', 'smc-viable')}
+                    </Button>
+                    <Button isPrimary onClick={handleExportExcel} disabled={leads.length === 0}>
+                        {__('Export Excel', 'smc-viable')}
+                    </Button>
+                </div>
             </div>
 
             {leads.length === 0 ? (
@@ -68,6 +117,7 @@ export default function LeadList() {
                                 <th className="p-4 font-semibold">{__('Email', 'smc-viable')}</th>
                                 <th className="p-4 font-semibold">{__('Phone', 'smc-viable')}</th>
                                 <th className="p-4 font-semibold">{__('Quiz ID', 'smc-viable')}</th>
+                                <th className="p-4 font-semibold">{__('Actions', 'smc-viable')}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -78,12 +128,28 @@ export default function LeadList() {
                                     <td className="p-4 text-blue-600">{lead.email}</td>
                                     <td className="p-4 text-gray-600">{lead.phone}</td>
                                     <td className="p-4 text-gray-500 text-xs">{lead.quiz_id}</td>
+                                    <td className="p-4">
+                                        <Button
+                                            isDestructive
+                                            isSmall
+                                            isBusy={deleting === lead.id}
+                                            disabled={deleting !== null}
+                                            onClick={() => handleDelete(lead.id, lead.name)}
+                                        >
+                                            {deleting === lead.id ? __('Deleting...', 'smc-viable') : __('Delete', 'smc-viable')}
+                                        </Button>
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
             )}
+
+            <div className="mt-4 text-sm text-gray-500">
+                {__('Total leads:', 'smc-viable')} {leads.length}
+            </div>
         </div>
     );
 }
+

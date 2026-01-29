@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "html-to-image": "^1.11.13",
-    "jspdf": "^4.0.0"
+    "jspdf": "^4.0.0",
+    "zod": "^4.3.5"
   }
 }

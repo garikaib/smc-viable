@@ -330,7 +330,13 @@ final class SMC_Quiz_Plugin {
 	 * @param string $hook Current admin page hook.
 	 */
 	public function enqueue_admin_scripts( string $hook ): void {
-		if ( 'toplevel_page_smc-quiz' !== $hook ) {
+		// Load scripts on both the main quiz page and the leads submenu page
+		$allowed_hooks = [
+			'toplevel_page_smc-quiz',
+			'smc-quiz_page_smc-leads',
+		];
+		
+		if ( ! in_array( $hook, $allowed_hooks, true ) ) {
 			return;
 		}
 

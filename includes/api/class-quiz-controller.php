@@ -81,6 +81,24 @@ class Quiz_Controller extends WP_REST_Controller {
             ]
         );
 
+        // Single lead DELETE
+        register_rest_route(
+            $this->namespace,
+            '/leads/(?P<id>[\d]+)',
+            [
+                'methods'             => WP_REST_Server::DELETABLE,
+                'callback'            => [ $this, 'delete_lead' ],
+                'permission_callback' => [ $this, 'delete_item_permissions_check' ],
+                'args'                => [
+                    'id' => [
+                        'validate_callback' => function( $param ) {
+                            return is_numeric( $param );
+                        }
+                    ],
+                ],
+            ]
+        );
+
         // Single quiz operations (GET, DELETE, UPDATE)
         register_rest_route(
             $this->namespace,
@@ -89,7 +107,7 @@ class Quiz_Controller extends WP_REST_Controller {
                 [
                     'methods'             => WP_REST_Server::READABLE,
                     'callback'            => [ $this, 'get_item' ],
-                    'permission_callback' => [ $this, 'get_items_permissions_check' ],
+                    'permission_callback' => '__return_true',
                     'args'                => [
                         'id' => [
                             'validate_callback' => function( $param ) {
@@ -125,6 +143,69 @@ class Quiz_Controller extends WP_REST_Controller {
             ]
         );
 	}
+
+    /**
+     * Get all leads.
+     *
+     * @param \WP_REST_Request $request Full data about the request.
+     * @return \WP_REST_Response|\WP_Error
+     */
+    public function get_leads( $request ) {
+        $args = [
+            'post_type'      => 'smc_lead',
+            'posts_per_page' => -1,
+            'post_status'    => 'publish',
+            'orderby'        => 'date',
+            'order'          => 'DESC',
+        ];
+        $posts = get_posts( $args );
+
+        $data = [];
+        foreach ( $posts as $post ) {
+            // Extract name from title (format: "Name - Date")
+            // Also check for dedicated name meta (for future leads)
+            $name = get_post_meta( $post->ID, '_smc_lead_name', true );
+            if ( empty( $name ) ) {
+                // Parse from title - split on " - " and take first part
+                $title_parts = explode( ' - ', $post->post_title, 2 );
+                $name = trim( $title_parts[0] );
+            }
+            
+            $data[] = [
+                'id'      => $post->ID,
+                'name'    => $name,
+                'date'    => $post->post_date,
+                'email'   => get_post_meta( $post->ID, '_smc_lead_email', true ) ?: '',
+                'phone'   => get_post_meta( $post->ID, '_smc_lead_phone', true ) ?: '',
+                'quiz_id' => get_post_meta( $post->ID, '_smc_lead_quiz_id', true ) ?: 0,
+            ];
+        }
+
+        return rest_ensure_response( $data );
+    }
+
+    /**
+     * Delete a single lead.
+     *
+     * @param \WP_REST_Request $request Full data about the request.
+     * @return \WP_REST_Response|\WP_Error
+     */
+    public function delete_lead( $request ) {
+        $id = (int) $request->get_param( 'id' );
+        $post = get_post( $id );
+
+        if ( ! $post || 'smc_lead' !== $post->post_type ) {
+            return new WP_Error( 'not_found', __( 'Lead not found.', 'smc-viable' ), [ 'status' => 404 ] );
+        }
+
+        $result = wp_delete_post( $id, true ); // Force delete (bypass trash)
+
+        if ( ! $result ) {
+            return new WP_Error( 'delete_failed', __( 'Failed to delete lead.', 'smc-viable' ), [ 'status' => 500 ] );
+        }
+
+        return rest_ensure_response( [ 'deleted' => true, 'id' => $id ] );
+    }
 
 	/**
 	 * Check if a given request has access to get items.
@@ -390,6 +471,25 @@ class Quiz_Controller extends WP_REST_Controller {
             return new WP_Error( 'invalid_email', __( 'Valid email required.', 'smc-viable' ), [ 'status' => 400 ] );
         }
 
+        // Check for duplicate email
+        $existing_leads = get_posts( [
+            'post_type'      => 'smc_lead',
+            'posts_per_page' => 1,
+            'post_status'    => 'publish',
+            'meta_query'     => [
+                [
+                    'key'     => '_smc_lead_email',
+                    'value'   => $email,
+                    'compare' => '=',
+                ]
+            ]
+        ] );
+
+        if ( ! empty( $existing_leads ) ) {
+            error_log( 'SMC Quiz: Duplicate email detected: ' . $email );
+            return new WP_Error( 'duplicate_email', __( 'This email has already submitted an assessment.', 'smc-viable' ), [ 'status' => 409 ] );
+        }
+
         if ( empty( $parameters['report'] ) ) {
              error_log( 'SMC Quiz: Missing report file.' );
             return new WP_Error( 'missing_file', __( 'Report file is missing.', 'smc-viable' ), [ 'status' => 400 ] );
@@ -433,28 +533,88 @@ class Quiz_Controller extends WP_REST_Controller {
                  'post_type'   => 'smc_lead',
                  'post_status' => 'publish',
                  'meta_input'  => [
-                     '_smc_lead_email' => $email,
-                     '_smc_lead_phone' => $phone,
+                     '_smc_lead_name'    => $name,
+                     '_smc_lead_email'   => $email,
+                     '_smc_lead_phone'   => $phone,
                      '_smc_lead_quiz_id' => $quiz_id,
                  ]
              ] );
              error_log( 'SMC Quiz: Lead saved with ID: ' . $lead_id );
              // -----------------
 
+             // Add error capture for wp_mail failures
+             $mail_error = null;
+             add_action('wp_mail_failed', function($error) use (&$mail_error) {
+                 $mail_error = $error;
+                 error_log('SMC Quiz: wp_mail failed with error: ' . print_r($error->get_error_message(), true));
+             });
+
              $sent = wp_mail( $email, $subject, $message, $headers, [ $new_file_path ] );
-             unlink( $new_file_path ); // Cleanup
              
              if ( $sent ) {
+                 unlink( $new_file_path ); // Cleanup only if successful
                  error_log( 'SMC Quiz: Email sent successfully to ' . $email );
-                 // Notify Admin as well? User requirement: "admin can ask for email... report"
-                 // Maybe send copy to admin?
+                 // Notify Admin as well
                  $admin_email = get_option( 'admin_email' );
                  $admin_message = sprintf( "New lead generated:\nName: %s\nEmail: %s\nPhone: %s\nQuiz ID: %d", $name, $email, $phone, $quiz_id );
                  wp_mail( $admin_email, "New Assessment Submission: $name", $admin_message );
 
                  return rest_ensure_response( [ 'success' => true, 'message' => __( 'Report sent successfully.', 'smc-viable' ) ] );
              } else {
-                 return new WP_Error( 'mail_failed', __( 'Failed to send email.', 'smc-viable' ), [ 'status' => 500 ] );
+                 // FALLBACK: Email with attachment failed, try without attachment
+                 error_log( 'SMC Quiz: Attachment email failed, trying fallback without attachment...' );
+                 
+                 // Keep the PDF file and generate a unique download link
+                 $unique_filename = 'report_' . $lead_id . '_' . wp_generate_password(8, false) . '.pdf';
+                 $permanent_path = $temp_path . $unique_filename;
+                 rename( $new_file_path, $permanent_path );
+                 
+                 // Generate download URL
+                 $download_url = $upload_dir['baseurl'] . '/smc_reports/' . $unique_filename;
+                 
+                 // Send email WITHOUT attachment
+                 $fallback_subject = sprintf( __( 'Your Assessment Results - %s', 'smc-viable' ), get_bloginfo( 'name' ) );
+                 $fallback_message = sprintf( 
+                     __( "Hi %s,\n\nThank you for completing our assessment!\n\nYou can download your personalized PDF report here:\n%s\n\nThis link will be available for 7 days.\n\nBest regards,\n%s", 'smc-viable' ), 
+                     $name, 
+                     $download_url,
+                     get_bloginfo( 'name' ) 
+                 );
+                 
+                 // Remove attachment error handler
+                 $mail_error = null;
+                 
+                 $fallback_sent = wp_mail( $email, $fallback_subject, $fallback_message, $headers );
+                 
+                 if ( $fallback_sent ) {
+                     error_log( 'SMC Quiz: Fallback email (without attachment) sent successfully to ' . $email );
+                     
+                     // Store download URL in lead meta for reference
+                     update_post_meta( $lead_id, '_smc_lead_report_url', $download_url );
+                     
+                     // Notify Admin
+                     $admin_email = get_option( 'admin_email' );
+                     $admin_message = sprintf( "New lead generated (report sent via download link):\nName: %s\nEmail: %s\nPhone: %s\nQuiz ID: %d\nReport: %s", $name, $email, $phone, $quiz_id, $download_url );
+                     wp_mail( $admin_email, "New Assessment Submission: $name", $admin_message );
+                     
+                     return rest_ensure_response( [ 
+                         'success' => true, 
+                         'message' => __( 'Report link sent successfully! Check your email.', 'smc-viable' ) 
+                     ] );
+                 } else {
+                     // Both methods failed
+                     error_log( 'SMC Quiz: Both email methods failed for ' . $email );
+                     
+                     // Store URL anyway for manual access
+                     update_post_meta( $lead_id, '_smc_lead_report_url', $download_url );
+                     
+                     return rest_ensure_response( [ 
+                         'success' => true, 
+                         'message' => __( 'Your submission was saved. We encountered an email issue - please contact support.', 'smc-viable' ),
+                         'email_sent' => false,
+                         'download_url' => $download_url  // Provide direct link as last resort
+                     ] );
+                 }
              }
         }
 
