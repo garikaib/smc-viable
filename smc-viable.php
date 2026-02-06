@@ -58,38 +58,86 @@ final class SMC_Quiz_Plugin {
 		add_action( 'init', [ $this, 'register_post_type' ] );
 		add_action( 'init', [ $this, 'register_blocks' ] );
 		add_action( 'init', [ $this, 'register_shortcodes' ] );
-		add_action( 'rest_api_init', [ $this, 'register_rest_routes' ] );
+        add_action( 'init', function() {
+            require_once __DIR__ . '/includes/class-hero-seeder.php';
+            Hero_Seeder::seed_defaults();
+        } );
+        
+        // Load Shop and Training Managers
+        require_once __DIR__ . '/includes/class-shop-cpt.php';
+        require_once __DIR__ . '/includes/class-training-manager.php';
+        
+        Shop_CPT::init();
+        Training_Manager::init();
+        add_action( 'rest_api_init', [ $this, 'register_rest_routes' ] );
 		add_action( 'admin_menu', [ $this, 'register_admin_menu' ] );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_admin_scripts' ] );
+        add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_frontend_scripts' ] );
+        add_filter( 'nav_menu_item_title', [ $this, 'add_shop_menu_icon' ], 10, 2 );
 	}
+
+    /**
+     * Add icon to Shop menu item.
+     */
+    public function add_shop_menu_icon( $title, $item ) {
+        if ( trim( $item->title ) === 'Shop' ) {
+            return '<i data-lucide="shopping-cart" class="smc-menu-icon" style="width: 1.2em; height: 1.2em; vertical-align: -0.2em; margin-right: 0.4em; display: inline-block;"></i>' . $title;
+        }
+        return $title;
+    }
+
+    /**
+     * Enqueue Frontend Scripts.
+     */
+    public function enqueue_frontend_scripts() {
+        // Enqueue Lucide for static icons in menus
+        wp_enqueue_script( 'lucide-icons', 'https://unpkg.com/lucide@latest', [], '1.0.0', true );
+        wp_add_inline_script( 'lucide-icons', 'document.addEventListener("DOMContentLoaded", function() { if(window.lucide) { lucide.createIcons(); } });' );
+    }
 
 	/**
 	 * Register Admin Menu.
 	 */
 	public function register_admin_menu(): void {
 		add_menu_page(
-			__( 'SMC Quiz', 'smc-viable' ),
-			__( 'SMC Quiz', 'smc-viable' ),
+			__( 'SMC Hub', 'smc-viable' ),
+			__( 'SMC Hub', 'smc-viable' ),
 			'edit_posts',
-			'smc-quiz',
+			'smc-hub',
 			[ $this, 'render_admin_page' ],
-			'dashicons-clipboard',
+			'dashicons-superhero-alt',
 			30
 		);
 
-        // Add "Dashboard" submenu (same as parent) to prevent "SMC Quiz" appearing twice if submenu is added
         add_submenu_page(
-            'smc-quiz',
-            __( 'Dashboard', 'smc-viable' ),
-            __( 'Dashboard', 'smc-viable' ),
+            'smc-hub',
+            __( 'Assessments', 'smc-viable' ),
+            __( 'Assessments', 'smc-viable' ),
             'edit_posts',
-            'smc-quiz',
+            'smc-hub',
             [ $this, 'render_admin_page' ]
         );
 
-        // Add "Leads" Submenu
         add_submenu_page(
-            'smc-quiz',
+            'smc-hub',
+            __( 'Products', 'smc-viable' ),
+            __( 'Products', 'smc-viable' ),
+            'edit_posts',
+            'smc-products',
+            [ $this, 'render_admin_page' ]
+        );
+
+        add_submenu_page(
+            'smc-hub',
+            __( 'Orders', 'smc-viable' ),
+            __( 'Orders', 'smc-viable' ),
+            'edit_posts',
+            'smc-orders',
+            [ $this, 'render_admin_page' ]
+        );
+
+        add_submenu_page(
+            'smc-hub',
             __( 'Leads', 'smc-viable' ),
             __( 'Leads', 'smc-viable' ),
             'edit_posts',
@@ -165,7 +213,28 @@ final class SMC_Quiz_Plugin {
 
 		register_post_type( 'smc_quiz', $args );
 		$this->register_lead_post_type();
+        $this->register_quiz_meta();
 	}
+
+    /**
+     * Register Post Meta for Hero Section.
+     */
+    public function register_quiz_meta(): void {
+        $meta_fields = [
+            '_smc_quiz_hero_title'    => 'string',
+            '_smc_quiz_hero_subtitle' => 'string',
+            '_smc_quiz_hero_bg'       => 'string', // URL or ID
+            '_smc_quiz_plan_level'    => 'string', // 'free', 'basic', 'premium'
+        ];
+
+        foreach ( $meta_fields as $key => $type ) {
+            register_post_meta( 'smc_quiz', $key, [
+                'type'         => $type,
+                'single'       => true,
+                'show_in_rest' => true,
+            ] );
+        }
+    }
     
     // ... (rest of methods)
     
@@ -213,6 +282,21 @@ final class SMC_Quiz_Plugin {
 		register_block_type( __DIR__ . '/src/blocks/quiz', [
 			'render_callback' => [ $this, 'render_quiz_block' ],
 		] );
+
+        register_block_type( 'smc-viable/training-list', [
+            'render_callback' => [ $this, 'render_training_list_shortcode' ],
+            'attributes' => [
+                'limit' => [ 'type' => 'number', 'default' => 6 ],
+                'quiz'  => [ 'type' => 'number', 'default' => 0 ],
+            ],
+        ] );
+
+        register_block_type( 'smc-viable/product-list', [
+            'render_callback' => [ $this, 'render_product_list_shortcode' ],
+            'attributes' => [
+                'limit' => [ 'type' => 'number', 'default' => 6 ],
+            ],
+        ] );
 	}
 
 	/**
@@ -262,6 +346,9 @@ final class SMC_Quiz_Plugin {
 	 */
 	public function register_shortcodes(): void {
 		add_shortcode( 'smc_quiz', [ $this, 'render_quiz_shortcode' ] );
+        add_shortcode( 'smc_shop', [ $this, 'render_shop_shortcode' ] );
+        add_shortcode( 'smc_training_list', [ $this, 'render_training_list_shortcode' ] );
+        add_shortcode( 'smc_product_list', [ $this, 'render_product_list_shortcode' ] );
 	}
 
 	/**
@@ -314,14 +401,154 @@ final class SMC_Quiz_Plugin {
 		);
 	}
 
+    /**
+     * Render the Shop Shortcode.
+     *
+     * @param array $atts Shortcode attributes.
+     * @return string
+     */
+    public function render_shop_shortcode( $atts ): string {
+        $asset_path = __DIR__ . '/build/shop.asset.php';
+        if ( ! file_exists( $asset_path ) ) {
+            return '<p>Shop module not found (build missing).</p>';
+        }
+
+        $asset_file = include $asset_path;
+
+        wp_enqueue_script(
+            'smc-shop-js',
+            plugins_url( 'build/shop.js', __FILE__ ),
+            $asset_file['dependencies'],
+            $asset_file['version'],
+            true
+        );
+
+        wp_enqueue_style(
+            'smc-shop-css',
+            plugins_url( 'build/style-shop.css', __FILE__ ), // If styles exist
+            [],
+            $asset_file['version']
+        );
+        
+        // Pass necessary data
+        wp_localize_script( 'smc-shop-js', 'wpApiSettings', [
+            'root'  => esc_url_raw( rest_url() ),
+            'nonce' => wp_create_nonce( 'wp_rest' ),
+        ] );
+
+        wp_localize_script( 'smc-shop-js', 'smcShopData', [
+            'shop_url' => home_url( '/shop/' ),
+        ] );
+
+        return '<div id="smc-shop-root">Loading Shop...</div>';
+    }
+
+    /**
+     * Render Training List Shortcode.
+     */
+    public function render_training_list_shortcode( $atts ): string {
+        $atts = shortcode_atts( [
+            'limit' => 6,
+            'quiz'  => 0,
+        ], $atts, 'smc_training_list' );
+
+        $args = [
+            'post_type'      => 'smc_training',
+            'posts_per_page' => (int) $atts['limit'],
+            'post_status'    => 'publish',
+        ];
+
+        if ( $atts['quiz'] ) {
+            $args['meta_query'] = [
+                [
+                    'key'   => '_linked_quiz_id',
+                    'value' => (int) $atts['quiz'],
+                ]
+            ];
+        }
+
+        $query = new \WP_Query( $args );
+        if ( ! $query->have_posts() ) {
+            return '<p>' . __( 'No training modules found.', 'smc-viable' ) . '</p>';
+        }
+
+        ob_start();
+        echo '<div class="smc-training-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">';
+        while ( $query->have_posts() ) {
+            $query->the_post();
+            $quiz_id = get_post_meta( get_the_ID(), '_linked_quiz_id', true );
+            $level = $quiz_id ? get_post_meta( $quiz_id, '_smc_quiz_plan_level', true ) : 'free';
+            ?>
+            <article class="smc-training-card" style="border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: #fff;">
+                <?php if ( has_post_thumbnail() ) : ?>
+                    <div class="smc-training-thumb"><?php the_post_thumbnail( 'medium' ); ?></div>
+                <?php endif; ?>
+                <div class="smc-training-content" style="padding: 15px;">
+                    <span class="smc-badge" style="display: inline-block; padding: 2px 8px; border-radius: 4px; background: #eee; font-size: 0.8em; text-transform: uppercase; margin-bottom: 10px;">
+                        <?php echo esc_html( $level ); ?>
+                    </span>
+                    <h4 style="margin: 0 0 10px;"><?php the_title(); ?></h4>
+                    <p style="font-size: 0.9em; color: #666;"><?php echo wp_trim_words( get_the_excerpt(), 15 ); ?></p>
+                    <a href="<?php the_permalink(); ?>" class="button" style="text-decoration: none; color: #007cba; font-weight: bold;"><?php _e( 'Learn More', 'smc-viable' ); ?></a>
+                </div>
+            </article>
+            <?php
+        }
+        echo '</div>';
+        wp_reset_postdata();
+        return ob_get_clean();
+    }
+
+    /**
+     * Render Product List Shortcode.
+     */
+    public function render_product_list_shortcode( $atts ): string {
+         $atts = shortcode_atts( [
+            'limit' => 6,
+        ], $atts, 'smc_product_list' );
+
+        $args = [
+            'post_type'      => 'smc_product',
+            'posts_per_page' => (int) $atts['limit'],
+            'post_status'    => 'publish',
+        ];
+
+        $query = new \WP_Query( $args );
+        if ( ! $query->have_posts() ) {
+            return '<p>' . __( 'No products found.', 'smc-viable' ) . '</p>';
+        }
+
+        ob_start();
+        echo '<div class="smc-product-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px;">';
+        while ( $query->have_posts() ) {
+            $query->the_post();
+            $price = get_post_meta( get_the_ID(), '_price', true );
+            ?>
+            <div class="smc-product-card" style="border: 1px solid #eee; padding: 20px; text-align: center; border-radius: 10px; background: #fdfdfd;">
+                <h4 style="margin-bottom: 5px;"><?php the_title(); ?></h4>
+                <div class="price" style="font-size: 1.5em; font-weight: bold; color: #222; margin-bottom: 15px;">$<?php echo esc_html( $price ); ?></div>
+                <a href="<?php echo home_url('/shop'); ?>" class="button button-primary" style="display: block; background: #007cba; color: #fff; padding: 10px; border-radius: 5px; text-decoration: none;"><?php _e( 'Buy Now', 'smc-viable' ); ?></a>
+            </div>
+            <?php
+        }
+        echo '</div>';
+        wp_reset_postdata();
+        return ob_get_clean();
+    }
+
 	/**
 	 * Register REST API routes.
 	 */
 	public function register_rest_routes(): void {
 		require_once __DIR__ . '/includes/api/class-quiz-controller.php';
+        require_once __DIR__ . '/includes/api/class-shop-controller.php';
         require_once __DIR__ . '/includes/class-seeder.php';
-		$controller = new \SMC\Viable\API\Quiz_Controller();
-		$controller->register_routes();
+        
+		$quiz_controller = new \SMC\Viable\API\Quiz_Controller();
+		$quiz_controller->register_routes();
+        
+        $shop_controller = new \SMC\Viable\API\Shop_Controller();
+        $shop_controller->register_routes();
 	}
 
 	/**
@@ -330,10 +557,12 @@ final class SMC_Quiz_Plugin {
 	 * @param string $hook Current admin page hook.
 	 */
 	public function enqueue_admin_scripts( string $hook ): void {
-		// Load scripts on both the main quiz page and the leads submenu page
+		// Load scripts on all SMC Hub admin pages
 		$allowed_hooks = [
-			'toplevel_page_smc-quiz',
-			'smc-quiz_page_smc-leads',
+			'toplevel_page_smc-hub',
+			'smc-hub_page_smc-products',
+			'smc-hub_page_smc-orders',
+			'smc-hub_page_smc-leads',
 		];
 		
 		if ( ! in_array( $hook, $allowed_hooks, true ) ) {

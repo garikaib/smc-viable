@@ -261,6 +261,7 @@ class Quiz_Controller extends WP_REST_Controller {
                 '_smc_quiz_settings'  => get_post_meta( $post->ID, '_smc_quiz_settings', true ) ?: [],
                 '_smc_quiz_dashboard_config' => get_post_meta( $post->ID, '_smc_quiz_dashboard_config', true ) ?: [],
                 '_smc_quiz_stages' => get_post_meta( $post->ID, '_smc_quiz_stages', true ) ?: [],
+                '_smc_quiz_plan_level' => get_post_meta( $post->ID, '_smc_quiz_plan_level', true ) ?: 'free',
             ],
         ];
     }
@@ -339,6 +340,11 @@ class Quiz_Controller extends WP_REST_Controller {
             update_post_meta( $post_id, '_smc_quiz_stages', $stages );
         }
 
+        $plan_level = $request->get_param( 'plan_level' );
+        if ( isset( $plan_level ) ) {
+             update_post_meta( $post_id, '_smc_quiz_plan_level', $plan_level );
+        }
+
 		$post = get_post( $post_id );
 		return rest_ensure_response( $this->prepare_item_for_response( $post, $request ) );
 	}
@@ -389,6 +395,11 @@ class Quiz_Controller extends WP_REST_Controller {
         // Update stages
         if ( isset( $stages ) ) {
             update_post_meta( $id, '_smc_quiz_stages', $stages );
+        }
+
+        $plan_level = $request->get_param( 'plan_level' );
+        if ( isset( $plan_level ) ) {
+             update_post_meta( $id, '_smc_quiz_plan_level', $plan_level );
         }
 
         $post = get_post( $id );

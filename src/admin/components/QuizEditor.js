@@ -12,6 +12,7 @@ export default function QuizEditor({ quizId, onBack }) {
     // Config States
     const [settings, setSettings] = useState({ delivery_mode: 'download' });
     const [stages, setStages] = useState(['Market & Offering', 'Business Model', 'Execution']);
+    const [planLevel, setPlanLevel] = useState('free');
 
     // Dashboard States
     const [dashboardTitle, setDashboardTitle] = useState('Assessment Results');
@@ -37,6 +38,10 @@ export default function QuizEditor({ quizId, onBack }) {
 
                     if (meta._smc_quiz_stages && Array.isArray(meta._smc_quiz_stages) && meta._smc_quiz_stages.length > 0) {
                         setStages(meta._smc_quiz_stages);
+                    }
+
+                    if (meta._smc_quiz_plan_level) {
+                        setPlanLevel(meta._smc_quiz_plan_level);
                     }
 
                     // Parse Dashboard Config
@@ -80,7 +85,8 @@ export default function QuizEditor({ quizId, onBack }) {
             questions: questions,
             settings: settings,
             dashboard_config: fullDashboardConfig,
-            stages: stages
+            stages: stages,
+            plan_level: planLevel
         };
 
         saveQuiz(data)
@@ -228,6 +234,20 @@ export default function QuizEditor({ quizId, onBack }) {
                                     ]}
                                     onChange={(val) => setSettings({ ...settings, delivery_mode: val })}
                                 />
+                                <hr style={{ margin: '20px 0' }} />
+
+                                <RadioControl
+                                    label={__('Plan Level', 'smc-viable')}
+                                    selected={planLevel}
+                                    options={[
+                                        { label: 'Free', value: 'free' },
+                                        { label: 'Basic ($5)', value: 'basic' },
+                                        { label: 'Premium ($10)', value: 'premium' },
+                                    ]}
+                                    onChange={setPlanLevel}
+                                    help={__('Determines which plan is required to access linked Training Material.', 'smc-viable')}
+                                />
+
                                 <hr style={{ margin: '20px 0' }} />
 
                                 <h3>{__('Stages / Categories', 'smc-viable')}</h3>

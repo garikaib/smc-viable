@@ -4,6 +4,16 @@
     border-radius: 8px;
     background: #fff;
 
+    .smc-assessment-hero {
+        width: 100%;
+        min-height: auto;
+        /* Let content dictate height */
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
     .smc-quiz-question {
         margin-bottom: 20px;
         padding-bottom: 20px;
@@ -23,8 +33,15 @@
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .animate-fade-in {

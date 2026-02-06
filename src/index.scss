@@ -1,5 +1,16 @@
 @import "tailwindcss";
-@plugin "daisyui";
+
+@plugin "daisyui" {
+    themes: light --default, dark;
+}
+
+/* Define SMC Brand Colors as Tailwind Theme Colors */
+@theme {
+    --color-smc-teal: #0E7673;
+    --color-smc-teal-dark: #0b5e5c;
+    --color-smc-red: #A1232A;
+    --color-smc-gold: #D48900;
+}
 
 /**
  * Main Block Styles

@@ -8,5 +8,6 @@ module.exports = {
         index: path.resolve(process.cwd(), 'src', 'index.js'),
         view: path.resolve(process.cwd(), 'src', 'view.js'),
         admin: path.resolve(process.cwd(), 'src', 'admin', 'index.js'),
+        shop: path.resolve(process.cwd(), 'src', 'shop', 'index.js'),
     },
 };

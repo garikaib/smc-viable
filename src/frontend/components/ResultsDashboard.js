@@ -280,9 +280,9 @@ export default function ResultsDashboard({ answers, quiz }) {
 
             {/* Email Gate / Lead Form */}
             {isEmailMode && !emailSent && (
-                <div className="max-w-md mx-auto bg-white p-8 rounded-xl border-t-8 border-primary">
-                    <h2 className="text-2xl font-bold mb-4 text-center">{__('Enter your details to get your results', 'smc-viable')}</h2>
-                    <p className="text-gray-500 mb-6 text-center">{__('We will email you the full PDF report immediately.', 'smc-viable')}</p>
+                <div className="max-w-md mx-auto bg-base-100 p-8 rounded-xl border-t-8 border-primary shadow-xl">
+                    <h2 className="text-2xl font-bold mb-4 text-center text-base-content">{__('Enter your details to get your results', 'smc-viable')}</h2>
+                    <p className="text-base-content/60 mb-6 text-center">{__('We will email you the full PDF report immediately.', 'smc-viable')}</p>
 
                     <div className="text-left space-y-4">
                         <div className="form-control">
