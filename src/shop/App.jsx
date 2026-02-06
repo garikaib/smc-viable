@@ -1,5 +1,6 @@
 import { useState, useEffect } from '@wordpress/element';
-import { Spinner, Button, Notice } from '@wordpress/components';
+import { Spinner, Button } from '@wordpress/components';
+import { CheckCircle, AlertCircle } from 'lucide-react';
 import apiFetch from '@wordpress/api-fetch';
 import ProductList from './pages/ProductList';
 import ProductDetails from './pages/ProductDetails';
@@ -141,9 +142,18 @@ export default function App() {
             </header>
 
             {notice && (
-                <Notice status={notice.status} onRemove={() => setNotice(null)} className="mb-6">
-                    {notice.text}
-                </Notice>
+                <div className="smc-toaster">
+                    <div className={`smc-toast ${notice.status}`}>
+                        <div className="toast-icon">
+                            {notice.status === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+                        </div>
+                        <div className="toast-content">
+                            <h4>{notice.status === 'success' ? 'Added to Cart' : 'Error'}</h4>
+                            <p>{notice.text}</p>
+                        </div>
+                        <div className="toast-timer" style={{ animationDuration: '3000ms' }}></div>
+                    </div>
+                </div>
             )}
 
             {loading ? <Spinner /> : (
