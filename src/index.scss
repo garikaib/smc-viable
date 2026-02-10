@@ -10,7 +10,16 @@
     --color-smc-teal-dark: #0b5e5c;
     --color-smc-red: #A1232A;
     --color-smc-gold: #D48900;
+
+    --color-smc-text-main: #1D262B;
+    --color-smc-text-muted: #6B7280;
+    --color-smc-bg-body: #F9FAFB;
+
+    --font-heading: "Outfit", "Inter", sans-serif;
+    --font-body: "Inter", sans-serif;
 }
+
+@import "shared";
 
 /**
  * Main Block Styles

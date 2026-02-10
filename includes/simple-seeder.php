@@ -173,17 +173,46 @@ foreach ( $training as $t ) {
 echo "Training modules seeded.\n";
 
 // 4. Create Shop Page
-$shop_page = get_page_by_title( 'Shop' );
-if ( ! $shop_page ) {
-    $shop_id = wp_insert_post( [
-        'post_title' => 'Shop',
-        'post_content' => '[smc_shop]',
-        'post_type' => 'page',
-        'post_status' => 'publish'
-    ] );
-    echo "Shop page created.\n";
-} else {
-    $shop_id = $shop_page->ID;
+$pages_to_create = [
+    [
+        'title'   => 'Shop',
+        'content' => '[smc_shop]',
+        'slug'    => 'shop'
+    ],
+    [
+        'title'   => 'Student Hub',
+        'content' => '[smc_student_hub]',
+        'slug'    => 'learning'
+    ],
+    [
+        'title'   => 'Instructor Hub',
+        'content' => '[smc_instructor_hub]',
+        'slug'    => 'instructor'
+    ]
+];
+
+$shop_id = 0; // Keep track of shop ID for menu
+
+foreach ( $pages_to_create as $page_data ) {
+    $existing = get_page_by_path( $page_data['slug'] );
+    if ( ! $existing ) {
+        $page_id = wp_insert_post( [
+            'post_title'   => $page_data['title'],
+            'post_content' => $page_data['content'],
+            'post_type'    => 'page',
+            'post_status'  => 'publish',
+            'post_name'    => $page_data['slug']
+        ] );
+        echo "{$page_data['title']} page created.\n";
+        
+        if ( $page_data['slug'] === 'shop' ) {
+            $shop_id = $page_id;
+        }
+    } else {
+        if ( $page_data['slug'] === 'shop' ) {
+            $shop_id = $existing->ID;
+        }
+    }
 }
 
 // 5. Add to Menu (Attempting to find main menu)

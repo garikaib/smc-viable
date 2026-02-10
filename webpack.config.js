@@ -9,5 +9,7 @@ module.exports = {
         view: path.resolve(process.cwd(), 'src', 'view.js'),
         admin: path.resolve(process.cwd(), 'src', 'admin', 'index.js'),
         shop: path.resolve(process.cwd(), 'src', 'shop', 'index.js'),
+        student: path.resolve(process.cwd(), 'src', 'student', 'index.js'),
+        instructor: path.resolve(process.cwd(), 'src', 'instructor', 'index.js'),
     },
 };

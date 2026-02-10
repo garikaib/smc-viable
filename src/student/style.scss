@@ -1,0 +1,163 @@
+.smc-student-app {
+    font-family: 'Inter', sans-serif;
+    color: #333;
+}
+
+.smc-student-header {
+    background: #fff;
+    padding: 20px 40px;
+    border-bottom: 1px solid #eee;
+
+    h1 {
+        margin: 0;
+        font-size: 1.8rem;
+    }
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@700;800;900&display=swap');
+
+// SMC Brand Palette
+$smc-teal: #0E7673;
+$smc-red: #A1232A;
+$smc-gold: #D48900;
+$smc-bg-body: #F9FAFB;
+$smc-text-main: #1D262B;
+$smc-text-muted: #6B7280;
+
+$font-heading: 'Outfit', 'Inter', sans-serif;
+$font-body: 'Inter', sans-serif;
+
+.smc-student-app {
+    background-color: $smc-bg-body;
+    min-height: 100vh;
+    font-family: $font-body;
+    position: relative;
+    overflow-x: hidden;
+}
+
+// Student Header (Sticky & Glassy)
+.smc-student-header {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    height: 100px;
+    display: flex;
+    align-items: center;
+
+    .smc-header-container {
+        max-width: 1400px;
+        width: 100%;
+        margin: 0 auto;
+        padding: 0 40px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .smc-badge-mini {
+        font-size: 10px;
+        font-weight: 900;
+        letter-spacing: 2px;
+        color: $smc-teal;
+        opacity: 0.6;
+    }
+}
+
+.smc-student-content {
+    max-width: 1400px;
+    margin: 60px auto;
+    padding: 0 40px;
+    position: relative;
+    z-index: 1;
+}
+
+// Reuse radial background styles from instructor hub for consistency
+@import "../instructor/style.scss";
+
+// Player specific overrides if needed
+.smc-course-player {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 2000;
+    background-color: white;
+    display: flex;
+}
+
+.smc-course-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 30px;
+}
+
+.smc-course-card {
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s;
+
+    &:hover {
+        transform: translateY(-5px);
+    }
+
+    .smc-course-thumb {
+        height: 180px;
+        background: #eee;
+
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+    }
+
+    .smc-course-info {
+        padding: 20px;
+
+        h3 {
+            margin: 0 0 15px;
+            font-size: 1.1rem;
+        }
+
+        button {
+            width: 100%;
+            background: #007cba;
+            color: #fff; // Fixed color was $primary-color which might not be defined in this file scope if partials aren't used correctly
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            margin-top: 15px;
+
+            &:hover {
+                background: darken(#007cba, 5%);
+            }
+        }
+    }
+}
+
+.smc-progress-bar {
+    height: 6px;
+    background: #f0f0f0;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 5px;
+
+    .smc-progress-fill {
+        height: 100%;
+        background: #2ecc71;
+    }
+}
+
+.smc-progress-text {
+    font-size: 0.8rem;
+    color: #888;
+}

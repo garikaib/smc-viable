@@ -1,0 +1,43 @@
+/**
+ * Shared Premium Styles
+ * Centralized here to allow @extend to work across different SCSS entry points.
+ * Using standard CSS instead of @apply to ensure compatibility across entry points
+ * and avoid Sass parsing issues with complex Tailwind values.
+ */
+
+.smc-glass-card {
+    background-color: var(--card-bg, rgba(255, 255, 255, 0.7));
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border: 1px solid var(--card-border, rgba(255, 255, 255, 0.1));
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    border-radius: 40px;
+    transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.4s, background-color 0.4s;
+
+    &:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 40px 100px rgba(0, 0, 0, 0.1);
+    }
+}
+
+.smc-premium-badge {
+    background-color: rgba(14, 118, 115, 0.1);
+    color: #0E7673;
+    padding: 8px 16px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    border: 1px solid rgba(14, 118, 115, 0.2);
+    display: inline-flex;
+    align-items: center;
+}
+
+.smc-premium-heading {
+    font-family: 'Outfit', 'Inter', sans-serif;
+    font-weight: 900;
+    color: var(--smc-text-main, #1D262B);
+    line-height: 1.2;
+    letter-spacing: -2px;
+}

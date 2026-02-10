@@ -182,4 +182,23 @@ class Training_Manager {
              . '<a href="' . esc_url( $shop_url ) . '" class="button">' . __( 'Upgrade Plan', 'smc-viable' ) . '</a>'
              . '</div>';
     }
+
+    /**
+     * Check if user can access course (Entitlement + Prerequisites).
+     */
+    public static function can_access_course( int $user_id, int $course_id ): bool|WP_Error {
+        // 1. Check Prerequisite
+        $prereq_id = get_post_meta( $course_id, '_prerequisite', true );
+        if ( ! empty( $prereq_id ) ) {
+            // Check if user has completed prereq_id
+            // Use user meta cache for efficiency
+            $percent = get_user_meta( $user_id, "_smc_progress_{$prereq_id}", true );
+            if ( (int) $percent < 100 ) {
+                $prereq_nav = get_post( $prereq_id );
+                return new \WP_Error( 'prerequisite_locked', 'You must complete ' . $prereq_nav->post_title . ' first.' );
+            }
+        }
+        
+        return true;
+    }
 }

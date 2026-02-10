@@ -66,9 +66,17 @@ final class SMC_Quiz_Plugin {
         // Load Shop and Training Managers
         require_once __DIR__ . '/includes/class-shop-cpt.php';
         require_once __DIR__ . '/includes/class-training-manager.php';
+        require_once __DIR__ . '/includes/class-lms-db.php';
+        require_once __DIR__ . '/includes/class-lms-progress.php';
+        require_once __DIR__ . '/includes/class-email-automation.php';
+        require_once __DIR__ . '/includes/class-seo-manager.php';
+        require_once __DIR__ . '/includes/api/class-instructor-controller.php';
         
         Shop_CPT::init();
         Training_Manager::init();
+        LMS_DB::init();
+        Email_Automation::init();
+        SEO_Manager::init();
         add_action( 'rest_api_init', [ $this, 'register_rest_routes' ] );
 		add_action( 'admin_menu', [ $this, 'register_admin_menu' ] );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_admin_scripts' ] );
@@ -347,6 +355,8 @@ final class SMC_Quiz_Plugin {
 	public function register_shortcodes(): void {
 		add_shortcode( 'smc_quiz', [ $this, 'render_quiz_shortcode' ] );
         add_shortcode( 'smc_shop', [ $this, 'render_shop_shortcode' ] );
+        add_shortcode( 'smc_student_hub', [ $this, 'render_student_hub_shortcode' ] );
+        add_shortcode( 'smc_instructor_hub', [ $this, 'render_instructor_hub_shortcode' ] );
         add_shortcode( 'smc_training_list', [ $this, 'render_training_list_shortcode' ] );
         add_shortcode( 'smc_product_list', [ $this, 'render_product_list_shortcode' ] );
 	}
@@ -441,6 +451,79 @@ final class SMC_Quiz_Plugin {
         ] );
 
         return '<div id="smc-shop-root">Loading Shop...</div>';
+    }
+
+    /**
+     * Render the Student Hub Shortcode.
+     */
+    public function render_student_hub_shortcode( $atts ): string {
+        $asset_path = __DIR__ . '/build/student.asset.php';
+        if ( ! file_exists( $asset_path ) ) {
+            return '<p>Student Hub module not found (build missing).</p>';
+        }
+
+        $asset_file = include $asset_path;
+
+        wp_enqueue_script(
+            'smc-student-js',
+            plugins_url( 'build/student.js', __FILE__ ),
+            $asset_file['dependencies'],
+            $asset_file['version'],
+            true
+        );
+
+        wp_enqueue_style(
+            'smc-student-css',
+            plugins_url( 'build/style-student.css', __FILE__ ),
+            [],
+            $asset_file['version']
+        );
+        
+        wp_localize_script( 'smc-student-js', 'wpApiSettings', [
+            'root'  => esc_url_raw( rest_url() ),
+            'nonce' => wp_create_nonce( 'wp_rest' ),
+        ] );
+
+        return '<div id="smc-student-root">Loading Student Hub...</div>';
+    }
+
+    /**
+     * Render the Instructor Hub Shortcode.
+     */
+    public function render_instructor_hub_shortcode( $atts ): string {
+        // Access Control: Only for users with 'edit_posts' capability
+        if ( ! current_user_can( 'edit_posts' ) ) {
+            return '<p>Access Denied. Instructor privileges required.</p>';
+        }
+
+        $asset_path = __DIR__ . '/build/instructor.asset.php';
+        if ( ! file_exists( $asset_path ) ) {
+            return '<p>Instructor Hub module not found (build missing).</p>';
+        }
+
+        $asset_file = include $asset_path;
+
+        wp_enqueue_script(
+            'smc-instructor-js',
+            plugins_url( 'build/instructor.js', __FILE__ ),
+            $asset_file['dependencies'],
+            $asset_file['version'],
+            true
+        );
+
+        wp_enqueue_style(
+            'smc-instructor-css',
+            plugins_url( 'build/style-instructor.css', __FILE__ ),
+            [],
+            $asset_file['version']
+        );
+        
+        wp_localize_script( 'smc-instructor-js', 'wpApiSettings', [
+            'root'  => esc_url_raw( rest_url() ),
+            'nonce' => wp_create_nonce( 'wp_rest' ),
+        ] );
+
+        return '<div id="smc-instructor-root">Loading Instructor Hub...</div>';
     }
 
     /**
@@ -540,8 +623,10 @@ final class SMC_Quiz_Plugin {
 	 * Register REST API routes.
 	 */
 	public function register_rest_routes(): void {
-		require_once __DIR__ . '/includes/api/class-quiz-controller.php';
+        require_once __DIR__ . '/includes/api/class-quiz-controller.php';
         require_once __DIR__ . '/includes/api/class-shop-controller.php';
+        require_once __DIR__ . '/includes/api/class-student-controller.php';
+        require_once __DIR__ . '/includes/api/class-course-controller.php';
         require_once __DIR__ . '/includes/class-seeder.php';
         
 		$quiz_controller = new \SMC\Viable\API\Quiz_Controller();
@@ -549,6 +634,15 @@ final class SMC_Quiz_Plugin {
         
         $shop_controller = new \SMC\Viable\API\Shop_Controller();
         $shop_controller->register_routes();
+
+        $student_controller = new \SMC\Viable\API\Student_Controller();
+        $student_controller->register_routes();
+        
+        $course_controller = new \SMC\Viable\API\Course_Controller();
+        $course_controller->register_routes();
+
+        $instructor_controller = new \SMC\Viable\API\Instructor_Controller();
+        $instructor_controller->register_routes();
 	}
 
 	/**
