@@ -106,7 +106,8 @@ export default function ProductEditor({ productId, onBack }) {
                     value={type}
                     options={[
                         { label: 'Membership Plan', value: 'plan' },
-                        { label: 'One-off / Single Module', value: 'single' },
+                        { label: 'Course Module', value: 'course' },
+                        { label: 'Service / Content Access', value: 'service' },
                     ]}
                     onChange={setType}
                 />
@@ -124,9 +125,9 @@ export default function ProductEditor({ productId, onBack }) {
                     />
                 )}
 
-                {type === 'single' && (
+                {(type === 'course' || type === 'service') && (
                     <p style={{ fontStyle: 'italic', color: '#666' }}>
-                        {__('Single module access control can be linked via Training Material meta.', 'smc-viable')}
+                        {__('This item can be linked to content or granted via enrollment rules.', 'smc-viable')}
                     </p>
                 )}
             </PanelBody>

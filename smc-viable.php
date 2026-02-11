@@ -25,7 +25,7 @@ final class SMC_Quiz_Plugin {
 	/**
 	 * Plugin version.
 	 */
-	public const VERSION = '1.0.0';
+	public const VERSION = '1.1.0';
 
 	/**
 	 * Instance of the class.
@@ -62,14 +62,21 @@ final class SMC_Quiz_Plugin {
             require_once __DIR__ . '/includes/class-hero-seeder.php';
             Hero_Seeder::seed_defaults();
         } );
+
+        if ( defined( 'WP_CLI' ) && WP_CLI ) {
+            require_once __DIR__ . '/includes/class-seeder.php';
+            Seeder::register_commands();
+        }
         
         // Load Shop and Training Managers
         require_once __DIR__ . '/includes/class-shop-cpt.php';
         require_once __DIR__ . '/includes/class-training-manager.php';
         require_once __DIR__ . '/includes/class-lms-db.php';
+        require_once __DIR__ . '/includes/class-enrollment-manager.php';
         require_once __DIR__ . '/includes/class-lms-progress.php';
         require_once __DIR__ . '/includes/class-email-automation.php';
         require_once __DIR__ . '/includes/class-seo-manager.php';
+        require_once __DIR__ . '/includes/class-content-manager.php';
         require_once __DIR__ . '/includes/api/class-instructor-controller.php';
         
         Shop_CPT::init();
@@ -77,11 +84,54 @@ final class SMC_Quiz_Plugin {
         LMS_DB::init();
         Email_Automation::init();
         SEO_Manager::init();
+        Content_Manager::init();
         add_action( 'rest_api_init', [ $this, 'register_rest_routes' ] );
 		add_action( 'admin_menu', [ $this, 'register_admin_menu' ] );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_admin_scripts' ] );
         add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_frontend_scripts' ] );
+        add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_account_scripts' ] );
         add_filter( 'nav_menu_item_title', [ $this, 'add_shop_menu_icon' ], 10, 2 );
+	}
+
+	/**
+	 * Enqueue Account Dashboard Scripts.
+	 */
+	public function enqueue_account_scripts() {
+		if ( ! is_page() || ! is_page_template( 'template-my-account.php' ) ) {
+			// Check if slug is 'my-account' as fallback
+			if ( ! is_page( 'my-account' ) ) {
+				return;
+			}
+		}
+
+		$asset_path = __DIR__ . '/build/account.asset.php';
+		if ( ! file_exists( $asset_path ) ) {
+			return;
+		}
+
+		$asset_file = include $asset_path;
+
+		wp_enqueue_script(
+			'smc-account-js',
+			plugins_url( 'build/account.js', __FILE__ ),
+			$asset_file['dependencies'],
+			$asset_file['version'],
+			true
+		);
+
+		wp_enqueue_style(
+			'smc-account-css',
+			plugins_url( 'build/style-account.css', __FILE__ ),
+			[],
+			$asset_file['version']
+		);
+
+		wp_localize_script( 'smc-account-js', 'smcAccountData', [
+			'root'      => esc_url_raw( rest_url() ),
+			'nonce'     => wp_create_nonce( 'wp_rest' ),
+			'logoutUrl' => wp_logout_url( home_url() ),
+			'baseUrl'   => home_url( '/my-account/' ),
+		] );
 	}
 
     /**
@@ -354,9 +404,19 @@ final class SMC_Quiz_Plugin {
 	 */
 	public function register_shortcodes(): void {
 		add_shortcode( 'smc_quiz', [ $this, 'render_quiz_shortcode' ] );
+        
+        // Hook for Course Completion Emails
+        add_action( 'smc_training_completed', function( $user_id, $course_id ) {
+            $user = get_userdata( $user_id );
+            if ( $user && class_exists( '\SMC\Viable\Email_Service' ) ) {
+                \SMC\Viable\Email_Service::send_completion( $user, $course_id );
+            }
+        }, 10, 2 );
+
         add_shortcode( 'smc_shop', [ $this, 'render_shop_shortcode' ] );
         add_shortcode( 'smc_student_hub', [ $this, 'render_student_hub_shortcode' ] );
         add_shortcode( 'smc_instructor_hub', [ $this, 'render_instructor_hub_shortcode' ] );
+        add_shortcode( 'smc_course_builder', [ $this, 'render_course_builder_shortcode' ] );
         add_shortcode( 'smc_training_list', [ $this, 'render_training_list_shortcode' ] );
         add_shortcode( 'smc_product_list', [ $this, 'render_product_list_shortcode' ] );
 	}
@@ -521,9 +581,61 @@ final class SMC_Quiz_Plugin {
         wp_localize_script( 'smc-instructor-js', 'wpApiSettings', [
             'root'  => esc_url_raw( rest_url() ),
             'nonce' => wp_create_nonce( 'wp_rest' ),
+            'siteName' => get_bloginfo( 'name' ),
+            'siteLogo' => function_exists( 'get_custom_logo' ) ? wp_get_attachment_image_url( get_theme_mod( 'custom_logo' ), 'full' ) : '',
+            'user' => [
+                'name'   => wp_get_current_user()->display_name,
+                'avatar' => get_avatar_url( get_current_user_id() ),
+            ]
         ] );
 
         return '<div id="smc-instructor-root">Loading Instructor Hub...</div>';
+    }
+
+    /**
+     * Render the Course Builder Shortcode.
+     */
+    public function render_course_builder_shortcode( $atts ): string {
+        // Access Control: Only for users with 'edit_posts' capability
+        if ( ! current_user_can( 'edit_posts' ) ) {
+            return '<p>Access Denied. Instructor privileges required.</p>';
+        }
+
+        // Reuse instructor bundle since it contains the builder code
+        $asset_path = __DIR__ . '/build/instructor.asset.php';
+        if ( ! file_exists( $asset_path ) ) {
+            return '<p>Course Builder module not found (build missing).</p>';
+        }
+
+        $asset_file = include $asset_path;
+
+        wp_enqueue_script(
+            'smc-instructor-js',
+            plugins_url( 'build/instructor.js', __FILE__ ),
+            $asset_file['dependencies'],
+            $asset_file['version'],
+            true
+        );
+
+        wp_enqueue_style(
+            'smc-instructor-css',
+            plugins_url( 'build/style-instructor.css', __FILE__ ),
+            [],
+            $asset_file['version']
+        );
+        
+        wp_localize_script( 'smc-instructor-js', 'wpApiSettings', [
+            'root'  => esc_url_raw( rest_url() ),
+            'nonce' => wp_create_nonce( 'wp_rest' ),
+            'siteName' => get_bloginfo( 'name' ),
+            'siteLogo' => function_exists( 'get_custom_logo' ) ? wp_get_attachment_image_url( get_theme_mod( 'custom_logo' ), 'full' ) : '',
+            'user' => [
+                'name'   => wp_get_current_user()->display_name,
+                'avatar' => get_avatar_url( get_current_user_id() ),
+            ]
+        ] );
+
+        return '<div id="smc-course-builder-root" class="smc-premium-layout">Loading Course Builder...</div>';
     }
 
     /**
@@ -643,6 +755,10 @@ final class SMC_Quiz_Plugin {
 
         $instructor_controller = new \SMC\Viable\API\Instructor_Controller();
         $instructor_controller->register_routes();
+
+        require_once __DIR__ . '/includes/api/class-account-controller.php';
+        $account_controller = new \SMC\Viable\API\Account_Controller();
+        $account_controller->register_routes();
 	}
 
 	/**
@@ -695,3 +811,20 @@ final class SMC_Quiz_Plugin {
 
 // Start the plugin.
 SMC_Quiz_Plugin::get_instance();
+
+/**
+ * Rename menu items based on identity status.
+ */
+add_filter( 'wp_nav_menu_objects', function( $items ) {
+	if ( ! is_user_logged_in() ) {
+		return $items;
+	}
+
+	foreach ( $items as $item ) {
+		if ( strpos( strtolower( $item->title ), 'free assessment' ) !== false ) {
+			$item->title = 'Business Health Scorecard';
+		}
+	}
+
+	return $items;
+} );

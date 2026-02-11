@@ -22,7 +22,9 @@ export default function ProductList({ products, addToCart, userAccess }) {
 
                         <div className="card-body">
                             <div className="card-meta">
-                                <span className={`type-tag ${product.type}`}>{product.type === 'plan' ? 'Membership' : 'Module'}</span>
+                                <span className={`type-tag ${product.type}`}>
+                                    {product.type === 'plan' ? 'Membership' : (product.type === 'course' ? 'Module' : 'Service')}
+                                </span>
                             </div>
                             <h3>{product.title}</h3>
                             <div className="card-footer">

@@ -269,8 +269,28 @@ class Shop_Controller extends WP_REST_Controller {
                 $level = get_post_meta( $product_id, '_plan_level', true );
                 // Set User Plan
                 update_user_meta( $user_id, '_smc_user_plan', $level );
+            } else {
+                // Check for linked training or course (Standalone/Course)
+                $training_id = (int) get_post_meta( $product_id, '_linked_training_id', true );
+                if ( ! $training_id ) {
+                    $training_id = (int) get_post_meta( $product_id, '_linked_course_id', true );
+                }
+
+                if ( $training_id ) {
+                    \SMC\Viable\Enrollment_Manager::enroll_user( 
+                        (int) $user_id, 
+                        $training_id, 
+                        'purchase', 
+                        [ 'order_id' => $order_id, 'product_id' => $product_id ] 
+                    );
+                }
             }
-            // Handle other types (single access) logic later
+        }
+        
+        // Ensure student role?
+        $user = get_userdata( $user_id );
+        if ( $user && ! in_array( 'subscriber', $user->roles ) && ! in_array( 'administrator', $user->roles ) ) {
+             $user->add_role( 'subscriber' );
         }
     }
 

@@ -1,163 +1,238 @@
-.smc-student-app {
-    font-family: 'Inter', sans-serif;
-    color: #333;
-}
+@import "tailwindcss";
 
-.smc-student-header {
-    background: #fff;
-    padding: 20px 40px;
-    border-bottom: 1px solid #eee;
-
-    h1 {
-        margin: 0;
-        font-size: 1.8rem;
-    }
+@plugin "daisyui" {
+    themes: light --default, dark;
 }
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@700;800;900&display=swap');
 
-// SMC Brand Palette
-$smc-teal: #0E7673;
-$smc-red: #A1232A;
-$smc-gold: #D48900;
-$smc-bg-body: #F9FAFB;
-$smc-text-main: #1D262B;
-$smc-text-muted: #6B7280;
-
+// SMC Brand Palette (Legacy for reference, but we use DaisyUI vars now)
 $font-heading: 'Outfit', 'Inter', sans-serif;
 $font-body: 'Inter', sans-serif;
 
 .smc-student-app {
-    background-color: $smc-bg-body;
     min-height: 100vh;
     font-family: $font-body;
     position: relative;
     overflow-x: hidden;
+    @apply bg-base-100 text-base-content;
 }
 
 // Student Header (Sticky & Glassy)
 .smc-student-header {
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    height: 100px;
-    display: flex;
-    align-items: center;
+    @apply bg-base-100/70 backdrop-blur-xl border-b border-base-content/5 sticky top-0 z-[100] h-20 flex items-center;
 
     .smc-header-container {
-        max-width: 1400px;
-        width: 100%;
-        margin: 0 auto;
-        padding: 0 40px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+        @apply max-w-7xl w-full mx-auto px-8 flex justify-between items-center;
     }
 
     .smc-badge-mini {
-        font-size: 10px;
-        font-weight: 900;
-        letter-spacing: 2px;
-        color: $smc-teal;
-        opacity: 0.6;
+        @apply text-[10px] font-black uppercase tracking-[0.2em] text-teal-500 opacity-60;
     }
 }
 
 .smc-student-content {
-    max-width: 1400px;
-    margin: 60px auto;
-    padding: 0 40px;
-    position: relative;
-    z-index: 1;
+    @apply max-w-7xl mx-auto py-12 px-8 relative z-[1] flex-grow;
 }
 
-// Reuse radial background styles from instructor hub for consistency
-@import "../instructor/style.scss";
-
-// Player specific overrides if needed
+// Course Player Layout
 .smc-course-player {
-    position: fixed;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    z-index: 2000;
-    background-color: white;
-    display: flex;
+    @apply fixed inset-0 z-[2000] bg-base-100 flex overflow-hidden;
 }
 
-.smc-course-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 30px;
-}
+.smc-player-sidebar {
+    @apply w-80 bg-base-200 border-r border-base-content/5 flex flex-col h-full;
 
-.smc-course-card {
-    background: #fff;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-    transition: transform 0.2s;
+    .smc-sidebar-header {
+        @apply p-6 border-b border-base-content/5 bg-base-100;
 
-    &:hover {
-        transform: translateY(-5px);
-    }
-
-    .smc-course-thumb {
-        height: 180px;
-        background: #eee;
-
-        img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-    }
-
-    .smc-course-info {
-        padding: 20px;
-
-        h3 {
-            margin: 0 0 15px;
-            font-size: 1.1rem;
-        }
-
-        button {
-            width: 100%;
-            background: #007cba;
-            color: #fff; // Fixed color was $primary-color which might not be defined in this file scope if partials aren't used correctly
+        .smc-back-btn {
+            @apply flex items-center gap-2 mb-4 text-xs font-bold text-base-content/50 hover:text-base-content transition-colors uppercase tracking-widest;
+            background: none;
             border: none;
-            padding: 10px;
-            border-radius: 6px;
             cursor: pointer;
-            font-weight: 500;
-            margin-top: 15px;
+        }
 
-            &:hover {
-                background: darken(#007cba, 5%);
+        .smc-course-title {
+            @apply text-lg font-black leading-tight text-base-content tracking-tight;
+            font-family: 'Outfit', sans-serif;
+        }
+    }
+
+    .smc-course-curriculum {
+        @apply flex-1 overflow-y-auto p-4;
+
+        .smc-section {
+            @apply mb-6;
+
+            .smc-section-title {
+                @apply text-[10px] font-black uppercase text-base-content/30 px-3 mb-2 tracking-[0.2em];
+            }
+        }
+
+        .smc-lesson-list {
+            @apply space-y-1;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .smc-lesson-item {
+            @apply p-4 rounded-xl cursor-pointer flex items-center gap-4 transition-all duration-200 hover:bg-base-content/5;
+
+            &.active {
+                @apply bg-teal-500/10 text-teal-500 font-bold;
+            }
+
+            .smc-lesson-title {
+                @apply text-sm leading-snug;
+            }
+
+            .smc-lesson-meta {
+                @apply text-[10px] uppercase font-black tracking-widest text-base-content/30 mt-1 flex items-center gap-2;
             }
         }
     }
 }
 
-.smc-progress-bar {
-    height: 6px;
-    background: #f0f0f0;
-    border-radius: 3px;
-    overflow: hidden;
-    margin-bottom: 5px;
+.smc-player-content {
+    @apply flex-1 flex flex-col bg-base-100 min-w-0;
 
-    .smc-progress-fill {
-        height: 100%;
-        background: #2ecc71;
+    .smc-player-header {
+        @apply h-[72px] border-b border-base-content/5 flex items-center px-10 bg-base-100/50 backdrop-blur-md sticky top-0 z-10;
+
+        h1 {
+            @apply text-xl font-black text-base-content tracking-tight;
+            font-family: 'Outfit', sans-serif;
+        }
+    }
+
+    .smc-lesson-viewer {
+        @apply flex-1 p-10 overflow-y-auto max-w-4xl mx-auto w-full;
+        @extend .scrollbar-hidden;
+
+        .smc-video-container {
+            @apply aspect-video w-full bg-black rounded-2xl overflow-hidden shadow-2xl shadow-black/20;
+        }
+
+        .smc-text-lesson {
+            @apply bg-base-200/50 p-10 rounded-2xl text-base-content/80 text-lg leading-relaxed;
+
+            h2,
+            h3 {
+                @apply font-black text-base-content mt-10 mb-4 tracking-tight;
+                font-family: 'Outfit', sans-serif;
+            }
+
+            p {
+                @apply mb-6;
+            }
+
+            ul,
+            ol {
+                @apply mb-6 ml-6 space-y-2;
+            }
+        }
     }
 }
 
-.smc-progress-text {
-    font-size: 0.8rem;
-    color: #888;
+.smc-player-footer {
+    @apply p-6 px-10 border-t border-base-content/5 bg-base-100/50 backdrop-blur-md flex justify-end items-center;
+
+    .smc-btn-complete {
+        @apply bg-teal-500 text-white font-bold py-3 px-8 rounded-xl hover:bg-teal-600 transition-all shadow-lg shadow-teal-500/20 active:scale-95 disabled:opacity-50 disabled:pointer-events-none uppercase tracking-widest text-xs;
+    }
+}
+
+.smc-notes-sidebar {
+    @apply w-80 bg-base-200/50 border-l border-base-content/5 flex flex-col h-full backdrop-blur-md;
+
+    h3 {
+        @apply p-6 pb-2 text-xs font-black uppercase text-base-content/40 tracking-widest;
+    }
+
+    textarea {
+        @apply flex-grow bg-transparent p-6 text-base-content/70 text-sm leading-relaxed resize-none focus:outline-none;
+        font-family: inherit;
+    }
+
+    .smc-notes-status {
+        @apply p-4 px-6 text-[10px] font-bold text-base-content/30 border-t border-base-content/5 bg-base-content/5;
+    }
+}
+
+.smc-course-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-12;
+}
+
+.smc-course-card {
+    @apply bg-base-200 border border-base-content/5 rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-teal-500/30 hover:shadow-2xl hover:shadow-teal-900/10;
+
+    .smc-course-thumb {
+        @apply h-48 bg-base-300 relative overflow-hidden;
+
+        img {
+            @apply w-full h-full object-cover transition-transform duration-700;
+        }
+    }
+
+    .smc-course-info {
+        @apply p-8 flex flex-col flex-grow;
+
+        h3 {
+            @apply mb-4 text-xl font-bold text-base-content;
+        }
+    }
+}
+
+.smc-progress-bar {
+    @apply h-1.5 bg-base-content/10 rounded-full overflow-hidden mb-2;
+
+    .smc-progress-fill {
+        @apply h-full transition-all duration-1000;
+    }
+}
+
+.smc-premium-heading {
+    @apply font-black tracking-tight text-base-content;
+    font-family: $font-heading;
+}
+
+.smc-premium-badge {
+    @apply text-[10px] font-black uppercase tracking-[0.2em] text-teal-500 bg-teal-500/10 px-3 py-1.5 rounded-full inline-block;
+}
+
+.smc-glass-card {
+    @apply bg-base-200/50 backdrop-blur-md border border-base-content/10;
+}
+
+.smc-btn-logout {
+    @apply flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold text-base-content/60 hover:text-base-content hover:bg-base-content/10 transition-all;
+}
+
+.smc-btn-primary {
+    @apply bg-teal-500 text-white font-bold py-3 px-6 rounded-xl hover:bg-teal-600 transition-all shadow-lg shadow-teal-500/20 active:scale-95;
+}
+
+// Animations from Shared Styles if needed (Radial Backgrounds)
+.smc-radial-bg {
+    @apply absolute inset-0 pointer-events-none overflow-hidden -z-10;
+
+    .bg-gradient-teal {
+        @apply absolute -top-[20%] -left-[10%] w-[60%] h-[60%] bg-teal-500/20 blur-[120px] rounded-full;
+    }
+
+    .bg-gradient-red {
+        @apply absolute -bottom-[20%] -right-[10%] w-[50%] h-[50%] bg-red-500/10 blur-[120px] rounded-full;
+    }
+}
+
+// Hide scrollbar for clean look
+.scrollbar-hidden::-webkit-scrollbar {
+    display: none;
+}
+
+.scrollbar-hidden {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }

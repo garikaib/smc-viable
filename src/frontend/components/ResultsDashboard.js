@@ -5,6 +5,7 @@ import apiFetch from '@wordpress/api-fetch';
 import jsPDF from 'jspdf';
 import { toPng } from 'html-to-image';
 import { z } from 'zod';
+import { ArrowRight, Unlock, Lock } from 'lucide-react';
 
 // Zod Validation Schema
 const leadFormSchema = z.object({
@@ -29,6 +30,11 @@ export default function ResultsDashboard({ answers, quiz }) {
     const [sendingEmail, setSendingEmail] = useState(false);
     const [emailSent, setEmailSent] = useState(false);
     const [formErrors, setFormErrors] = useState({});
+
+    // Outcome States
+    const [unlockedCourses, setUnlockedCourses] = useState([]);
+    const [recommendedCourses, setRecommendedCourses] = useState([]);
+    const [requiresLogin, setRequiresLogin] = useState(false);
 
     const questions = quiz.meta?._smc_quiz_questions || [];
     const settings = quiz.meta?._smc_quiz_settings || {};
@@ -111,12 +117,11 @@ export default function ResultsDashboard({ answers, quiz }) {
         });
     }, [totalScore, dashboardConfig]);
 
-    // Generate PDF Blob - Optimized for smaller file size
+    // Generate PDF Blob
     const generatePDF = async () => {
         if (!reportRef.current) return null;
         const element = reportRef.current;
 
-        // Capture with balanced quality/size settings
         const dataUrl = await toPng(element, {
             quality: 0.8,
             backgroundColor: '#ffffff',
@@ -169,29 +174,21 @@ export default function ResultsDashboard({ answers, quiz }) {
     };
 
     const handleEmailSubmit = async () => {
-        // Validate with Zod
-        if (!validateForm()) {
-            return;
-        }
+        if (!validateForm()) return;
 
         setSendingEmail(true);
         setFormErrors({});
-
-        // Show results immediately - user has provided their email
         setEmailSent(true);
 
         try {
-            // Small delay to ensure the report is rendered and visible
             await new Promise(resolve => setTimeout(resolve, 100));
 
-            // 1. Generate PDF from now-visible report
             const pdf = await generatePDF();
-            if (!pdf) throw new Error("PDF Generation Failed - Report element not found");
+            if (!pdf) throw new Error("PDF Generation Failed");
 
             const pdfBlob = pdf.output('blob');
             const file = new File([pdfBlob], "report.pdf", { type: "application/pdf" });
 
-            // 2. Send to API
             const formData = new FormData();
             formData.append('quiz_id', quiz.id);
             formData.append('name', leadData.name.trim());
@@ -199,14 +196,30 @@ export default function ResultsDashboard({ answers, quiz }) {
             formData.append('phone', leadData.phone.trim());
             formData.append('report', file);
 
+            // Send Score Data
+            formData.append('score_data', JSON.stringify({
+                total_score: totalScore,
+                scores_by_stage: scoresByStage
+            }));
+
             const response = await apiFetch({
-                path: '/smc/v1/submit-email',
+                path: '/smc/v1/quizzes/submit-email', // Ensure correct route base
                 method: 'POST',
                 body: formData,
             });
 
             if (response.success) {
-                // If email failed but we got a download URL, show it
+                // Handle Enrollment Outcomes
+                if (response.enrolled_courses && response.enrolled_courses.length > 0) {
+                    setUnlockedCourses(response.enrolled_courses);
+                }
+                if (response.recommended_courses && response.recommended_courses.length > 0) {
+                    setRecommendedCourses(response.recommended_courses);
+                }
+                if (response.requires_login) {
+                    setRequiresLogin(true);
+                }
+
                 if (response.download_url) {
                     alert(__('Your report is ready! If you don\'t receive an email, download it here: ', 'smc-viable') + response.download_url);
                 }
@@ -215,44 +228,17 @@ export default function ResultsDashboard({ answers, quiz }) {
             }
         } catch (e) {
             console.error('Email submission error:', e);
-
-            // Parse API error messages
+            // Error handling (keep existing logic or simplify)
             let errorMessage = __('Failed to send email. Please try again.', 'smc-viable');
-
-            if (e.code === 'duplicate_email') {
-                errorMessage = __('This email has already submitted an assessment. Please use a different email.', 'smc-viable');
-                setFormErrors({ email: errorMessage });
-            } else if (e.code === 'invalid_email') {
-                errorMessage = __('Please enter a valid email address.', 'smc-viable');
-                setFormErrors({ email: errorMessage });
-            } else if (e.code === 'mail_failed') {
-                errorMessage = __('Email delivery failed. Your submission was saved - please contact support.', 'smc-viable');
-            } else if (e.message) {
-                errorMessage = e.message;
-            }
-
-            if (!formErrors.email) {
-                alert(errorMessage);
-            }
+            if (e.code === 'duplicate_email') errorMessage = __('This email has already submitted an assessment.', 'smc-viable');
+            alert(errorMessage);
         } finally {
             setSendingEmail(false);
         }
     };
 
     // Styling Helpers
-    // If no config, fallback to defaults
-    const getLevelColor = (level) => {
-        if (matchingRule) return matchingRule.style?.color ? `text-${matchingRule.style.color}` : 'text-primary';
-        // Fallback
-        if (level.includes('Strong')) return 'text-success';
-        if (level.includes('Moderate')) return 'text-info';
-        if (level.includes('Weak')) return 'text-warning';
-        return 'text-error';
-    };
-
     const getScoreColorHex = (percent) => {
-        // If dynamic, use matchingRule color if mapped? 
-        // Rule defines 'color': 'green'. We need hex map.
         if (matchingRule) {
             const map = { green: '#16a34a', 'light-green': '#4ade80', orange: '#d97706', red: '#dc2626' };
             return map[matchingRule.style?.color] || '#0284c7';
@@ -265,14 +251,11 @@ export default function ResultsDashboard({ answers, quiz }) {
 
     const overallColor = getScoreColorHex((totalScore / maxPossibleScore) * 100);
     const resultMessage = matchingRule ? matchingRule.message : (
-        // Fallback Logic
         ((totalScore / maxPossibleScore) >= 0.8) ? __('Strong readiness!', 'smc-viable') : __('Needs improvement.', 'smc-viable')
     );
     const resultTitle = matchingRule ? matchingRule.condition_text : __('Overall Score', 'smc-viable');
 
     // -- RENDER --
-
-    // Prevent interaction if currently exporting/sending
     const isBusy = isExporting || sendingEmail;
 
     return (
@@ -289,48 +272,24 @@ export default function ResultsDashboard({ answers, quiz }) {
                             <TextControl
                                 label={__('Full Name *', 'smc-viable')}
                                 value={leadData.name}
-                                onChange={(val) => {
-                                    setLeadData({ ...leadData, name: val });
-                                    if (formErrors.name) setFormErrors({ ...formErrors, name: null });
-                                }}
-                                __next40pxDefaultSize
-                                __nextHasNoMarginBottom
+                                onChange={(val) => setLeadData({ ...leadData, name: val })}
                             />
-                            {formErrors.name && (
-                                <span className="text-error text-sm mt-1">{formErrors.name}</span>
-                            )}
                         </div>
                         <div className="form-control">
                             <TextControl
                                 label={__('Email Address *', 'smc-viable')}
                                 value={leadData.email}
-                                onChange={(val) => {
-                                    setLeadData({ ...leadData, email: val });
-                                    if (formErrors.email) setFormErrors({ ...formErrors, email: null });
-                                }}
+                                onChange={(val) => setLeadData({ ...leadData, email: val })}
                                 type="email"
-                                __next40pxDefaultSize
-                                __nextHasNoMarginBottom
                             />
-                            {formErrors.email && (
-                                <span className="text-error text-sm mt-1">{formErrors.email}</span>
-                            )}
                         </div>
                         <div className="form-control">
                             <TextControl
                                 label={__('Phone Number', 'smc-viable')}
                                 value={leadData.phone}
-                                onChange={(val) => {
-                                    setLeadData({ ...leadData, phone: val });
-                                    if (formErrors.phone) setFormErrors({ ...formErrors, phone: null });
-                                }}
+                                onChange={(val) => setLeadData({ ...leadData, phone: val })}
                                 type="tel"
-                                __next40pxDefaultSize
-                                __nextHasNoMarginBottom
                             />
-                            {formErrors.phone && (
-                                <span className="text-error text-sm mt-1">{formErrors.phone}</span>
-                            )}
                         </div>
                     </div>
 
@@ -343,11 +302,6 @@ export default function ResultsDashboard({ answers, quiz }) {
                             {isBusy ? <span className="loading loading-spinner"></span> : null}
                             {__('Get My Results', 'smc-viable')}
                         </button>
-                    </div>
-
-                    <div className="alert alert-info shadow-sm mt-6 text-xs flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6 mr-2"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        <span>{__('Your information is secure and will not be shared.', 'smc-viable')}</span>
                     </div>
                 </div>
             )}
@@ -364,23 +318,58 @@ export default function ResultsDashboard({ answers, quiz }) {
                         </div>
                     )}
 
+                    {/* ENROLLMENT OUTCOMES */}
+                    {(unlockedCourses.length > 0 || recommendedCourses.length > 0) && (
+                        <div className="grid gap-6 mb-8">
+                            {unlockedCourses.length > 0 && (
+                                <div className="bg-green-50 border border-green-200 p-6 rounded-lg text-green-900">
+                                    <h3 className="flex items-center gap-2 font-bold text-lg mb-2">
+                                        <Unlock size={20} /> Modules Unlocked!
+                                    </h3>
+                                    <p>Based on your score, you have been enrolled in:</p>
+                                    <ul className="list-disc list-inside mt-2 font-bold">
+                                        {/* We only have IDs, so generic message unless we return titles. 
+                                            Let's assume backend sends IDs. 
+                                            Actually backend returns just IDs in enrolled_courses usually.
+                                            But in evaluate_quiz_rules/process_quiz_enrollment we return objects? 
+                                            Wait, process_quiz_enrollment returns array of IDs.
+                                            We should probably improve backend to return titles, or just say "Exclusive Content".
+                                            For now, just a generic success message.
+                                         */}
+                                        <li>Exclusive Course Content</li>
+                                    </ul>
+                                    <a href="/student-hub" className="btn btn-sm btn-success mt-4">Go to Student Hub</a>
+                                </div>
+                            )}
+
+                            {recommendedCourses.length > 0 && requiresLogin && (
+                                <div className="bg-blue-50 border border-blue-200 p-6 rounded-lg text-blue-900">
+                                    <h3 className="flex items-center gap-2 font-bold text-lg mb-2">
+                                        <Lock size={20} /> Recommended for You
+                                    </h3>
+                                    <p>Your results suggest you would benefit from:</p>
+                                    <ul className="list-disc list-inside mt-2 font-bold">
+                                        {recommendedCourses.map((c, i) => (
+                                            <li key={i}>{c.course_title || 'Advanced Modules'}</li>
+                                        ))}
+                                    </ul>
+                                    <p className="mt-2 text-sm">Log in or upgrade your plan to access these modules.</p>
+                                    <a href="/my-account" className="btn btn-sm btn-primary mt-4">Log In / Sign Up</a>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Top Summary */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="card bg-base-100 shadow border border-base-200">
                             <div className="card-body text-center">
                                 <h3 className="card-title justify-center">{resultTitle}</h3>
-
                                 <div className="radial-progress mx-auto my-4 text-primary"
                                     style={{ "--value": (totalScore / maxPossibleScore) * 100, "--size": "8rem", "--thickness": "0.8rem", color: overallColor }}>
                                     <span className="text-3xl font-bold text-base-content">{totalScore}</span>
                                 </div>
-
-                                <p className="text-lg leading-relaxed px-4">
-                                    {resultMessage}
-                                </p>
-                                <p className="text-sm text-base-content/60 mt-2">
-                                    {__('Total Score:', 'smc-viable')} {totalScore} / {maxPossibleScore}
-                                </p>
+                                <p className="text-lg leading-relaxed px-4">{resultMessage}</p>
                             </div>
                         </div>
 
@@ -407,73 +396,24 @@ export default function ResultsDashboard({ answers, quiz }) {
                             </div>
                         </div>
                     </div>
-
-                    {/* Stage Breakdown */}
-                    <div>
-                        <h3 className="text-xl font-bold mb-4">{__('Stage Breakdown', 'smc-viable')}</h3>
-                        <div className="overflow-x-auto bg-base-100 rounded-lg border border-base-200">
-                            <table className="table w-full">
-                                <thead>
-                                    <tr>
-                                        <th>{__('Stage', 'smc-viable')}</th>
-                                        <th>{__('Score', 'smc-viable')}</th>
-                                        <th>{__('Status', 'smc-viable')}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {Object.entries(scoresByStage).map(([stageName, data]) => (
-                                        <tr key={stageName}>
-                                            <td className="font-medium">{stageName}</td>
-                                            <td>
-                                                <div className="flex items-center gap-2">
-                                                    <progress className="progress w-24" value={data.total} max={data.max || 1}
-                                                        style={{ color: getScoreColorHex((data.total / (data.max || 1)) * 100) }}
-                                                    ></progress>
-                                                    <span className="text-xs">{data.total}/{data.max}</span>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                {data.flags > 0 ?
-                                                    <span className="badge badge-error text-white">{data.flags} Flags</span> :
-                                                    <span className="badge badge-ghost">{(data.total / data.max) > 0.5 ? 'Good' : 'Weak'}</span>
-                                                }
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    {/* Download Action (Always available after gate) */}
-                    <div className="flex justify-center pt-8">
-                        <Button variant="secondary" onClick={handleDownload} disabled={isBusy}>
-                            {isBusy ? __('Processing...', 'smc-viable') : __('Download PDF Report', 'smc-viable')}
-                        </Button>
-                    </div>
                 </>
             )}
 
-            {/* Hidden Report for PDF Generation - positioned off-screen so html-to-image can capture it */}
+            {/* Hidden Report for PDF Generation */}
             <div
                 className="fixed w-[210mm] min-h-[297mm] p-10 font-sans bg-white text-black"
                 style={{ left: '-9999px', top: 0 }}
                 ref={reportRef}
             >
-                {/* Header */}
                 <div className="flex justify-between items-start pb-4 mb-8 border-b-2" style={{ borderColor: overallColor }}>
                     <h1 className="text-3xl font-bold" style={{ color: overallColor }}>{dashboardConfig?.dashboard_config?.title || quiz.title.rendered}</h1>
                     <p className="text-gray-500">{new Date().toLocaleDateString()}</p>
                 </div>
-
-                {/* Summary */}
                 <div className="mb-8 p-6 bg-gray-50 rounded-lg">
                     <h2 className="text-xl font-bold mb-2" style={{ color: overallColor }}>{resultTitle}</h2>
                     <p className="text-lg text-gray-700">{resultMessage}</p>
                     <p className="mt-4 font-bold">Total Score: {totalScore} / {maxPossibleScore}</p>
                 </div>
-
-                {/* Table */}
                 <table className="w-full text-sm">
                     <thead>
                         <tr className="text-left bg-gray-100">
@@ -492,10 +432,8 @@ export default function ResultsDashboard({ answers, quiz }) {
                         ))}
                     </tbody>
                 </table>
-
                 <div className="mt-8 text-xs text-gray-400 text-center">Generated by {getScoreColorHex(0) ? 'SMC Viable' : ''}</div>
             </div>
-
         </div>
     );
 }

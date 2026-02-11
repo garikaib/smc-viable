@@ -3,12 +3,13 @@ import Sidebar from './Sidebar';
 import VideoRenderer from './VideoRenderer';
 import TextRenderer from './TextRenderer';
 import NotesSidebar from './NotesSidebar';
-import './style-player.scss';
+// styles are now consolidated in style.scss
 
 export default function CoursePlayer({ courseId, onExit }) {
     const [structure, setStructure] = useState(null);
     const [loading, setLoading] = useState(true);
     const [completing, setCompleting] = useState(false);
+    const [activeLessonId, setActiveLessonId] = useState(null);
 
     useEffect(() => {
         const fetchStructure = async () => {
@@ -20,8 +21,14 @@ export default function CoursePlayer({ courseId, onExit }) {
                 setStructure(data);
 
                 // Set first lesson as active if none selected
-                if (data.sections && data.sections.length > 0 && data.sections[0].lessons.length > 0) {
-                    setActiveLessonId(data.sections[0].lessons[0].id);
+                if (data.sections && data.sections.length > 0) {
+                    // Find first available lesson
+                    for (const section of data.sections) {
+                        if (section.lessons && section.lessons.length > 0) {
+                            setActiveLessonId(section.lessons[0].id);
+                            break;
+                        }
+                    }
                 }
             } catch (err) {
                 console.error("Failed to load course", err);
@@ -50,6 +57,17 @@ export default function CoursePlayer({ courseId, onExit }) {
                     course_id: courseId,
                     lesson_id: activeLessonId
                 })
+            });
+
+            // Update local state to mark as completed
+            setStructure(prev => {
+                const newSections = prev.sections.map(section => ({
+                    ...section,
+                    lessons: section.lessons.map(lesson =>
+                        lesson.id === activeLessonId ? { ...lesson, status: 'completed' } : lesson
+                    )
+                }));
+                return { ...prev, sections: newSections };
             });
 
             // Find next lesson
@@ -92,10 +110,14 @@ export default function CoursePlayer({ courseId, onExit }) {
                 </header>
                 <main className="smc-lesson-viewer">
                     <div className="smc-lesson-body">
-                        {activeLesson?.type === 'video' ? (
-                            <VideoRenderer lesson={activeLesson} />
+                        {activeLesson ? (
+                            activeLesson.type === 'video' ? (
+                                <VideoRenderer lesson={activeLesson} />
+                            ) : (
+                                <TextRenderer lesson={activeLesson} />
+                            )
                         ) : (
-                            <TextRenderer lesson={activeLesson} />
+                            <div className="p-10 text-center text-gray-500">Select a lesson to start.</div>
                         )}
                     </div>
                 </main>

@@ -24,7 +24,9 @@ export default function ProductDetails({ product, onBack, addToCart, userAccess 
             <div className="details-grid">
                 <div className="details-image" style={{ backgroundImage: `url(${product.image})` }}>
                     <div className="details-overlay">
-                        <span className="badge">{product.type === 'plan' ? 'Membership Tier' : 'Course Module'}</span>
+                        <span className="badge">
+                            {product.type === 'plan' ? 'Membership Tier' : (product.type === 'course' ? 'Course Module' : 'Professional Service')}
+                        </span>
                     </div>
                 </div>
 
@@ -41,7 +43,7 @@ export default function ProductDetails({ product, onBack, addToCart, userAccess 
                     </div>
 
                     <div className="details-description">
-                        <h3>About this {product.type === 'plan' ? 'Plan' : 'Module'}</h3>
+                        <h3>About this {product.type === 'plan' ? 'Plan' : (product.type === 'course' ? 'Module' : 'Service')}</h3>
                         <p>{product.long_description || product.description}</p>
                     </div>
 

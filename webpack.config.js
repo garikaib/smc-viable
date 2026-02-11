@@ -11,5 +11,6 @@ module.exports = {
         shop: path.resolve(process.cwd(), 'src', 'shop', 'index.js'),
         student: path.resolve(process.cwd(), 'src', 'student', 'index.js'),
         instructor: path.resolve(process.cwd(), 'src', 'instructor', 'index.js'),
+        account: path.resolve(process.cwd(), 'src', 'account', 'index.js'),
     },
 };

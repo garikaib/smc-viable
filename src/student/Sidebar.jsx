@@ -1,4 +1,4 @@
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Circle } from 'lucide-react';
 
 export default function Sidebar({ title, sections, activeLessonId, onSelectLesson, onExit }) {
     return (
@@ -21,13 +21,20 @@ export default function Sidebar({ title, sections, activeLessonId, onSelectLesso
                                     className={`smc-lesson-item ${lesson.id === activeLessonId ? 'active' : ''}`}
                                     onClick={() => onSelectLesson(lesson.id)}
                                 >
-                                    <span className="smc-lesson-icon">
-                                        {lesson.type === 'video' ? '🎥' : '📄'}
+                                    <span className="smc-lesson-status">
+                                        {lesson.status === 'completed' ? (
+                                            <CheckCircle size={16} className="text-green-500" />
+                                        ) : (
+                                            <Circle size={16} className="text-gray-600" />
+                                        )}
                                     </span>
-                                    <span className="smc-lesson-title">{lesson.title}</span>
-                                    {lesson.duration > 0 && (
-                                        <span className="smc-lesson-duration">{lesson.duration}m</span>
-                                    )}
+                                    <div className="flex-1 min-w-0">
+                                        <span className="smc-lesson-title block truncate">{lesson.title}</span>
+                                        <span className="smc-lesson-meta">
+                                            <span>{lesson.type === 'video' ? 'Video' : 'Text'}</span>
+                                            {lesson.duration > 0 && <span>• {lesson.duration}m</span>}
+                                        </span>
+                                    </div>
                                 </li>
                             ))}
                         </ul>

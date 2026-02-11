@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from '@wordpress/element';
 import { LayoutDashboard, Users, BookOpen, LogOut } from 'lucide-react';
 import Dashboard from './Dashboard';
 import StudentManager from './StudentManager';
-import CourseBuilder from './CourseBuilder';
 import { gsap } from 'gsap';
 import './style.scss';
 
@@ -13,8 +12,7 @@ export default function App() {
 
     const tabs = [
         { id: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard },
-        { id: 'students', label: 'STUDENTS', icon: Users },
-        { id: 'builder', label: 'BUILDER', icon: BookOpen }
+        { id: 'students', label: 'STUDENTS', icon: Users }
     ];
 
     useEffect(() => {
@@ -66,7 +64,6 @@ export default function App() {
             <main className="smc-instructor-content">
                 {currentTab === 'dashboard' && <Dashboard />}
                 {currentTab === 'students' && <StudentManager />}
-                {currentTab === 'builder' && <CourseBuilder />}
             </main>
         </div>
     );

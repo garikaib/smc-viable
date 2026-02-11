@@ -35,61 +35,103 @@ class Training_Manager {
 	}
 
 	/**
-	 * Register Training CPT.
+	 * Register Training CPT (The Course Object).
 	 */
 	public static function register_training_cpt(): void {
 		$labels = [
-			'name'                  => _x( 'Training Material', 'Post Type General Name', 'smc-viable' ),
-			'singular_name'         => _x( 'Training Module', 'Post Type Singular Name', 'smc-viable' ),
+			'name'                  => _x( 'Training Programs', 'Post Type General Name', 'smc-viable' ),
+			'singular_name'         => _x( 'Training Program', 'Post Type Singular Name', 'smc-viable' ),
 			'menu_name'             => __( 'Training', 'smc-viable' ),
-            'add_new'               => __( 'Add New Module', 'smc-viable' ),
-            'edit_item'             => __( 'Edit Module', 'smc-viable' ),
+			'add_new'               => __( 'Add New Program', 'smc-viable' ),
+			'edit_item'             => __( 'Edit Program', 'smc-viable' ),
+			'view_item'             => __( 'View Program', 'smc-viable' ),
+			'search_items'          => __( 'Search Programs', 'smc-viable' ),
 		];
 
 		$args = [
 			'label'                 => __( 'Training', 'smc-viable' ),
-			'description'           => __( 'SMC Training Materials', 'smc-viable' ),
+			'description'           => __( 'SMC Training Programs', 'smc-viable' ),
 			'labels'                => $labels,
 			'supports'              => [ 'title', 'editor', 'thumbnail', 'excerpt', 'custom-fields' ],
 			'public'                => true,
 			'show_ui'               => true,
-			'show_in_menu'          => 'smc-quiz',
+			'show_in_menu'          => 'smc-hub', // Move under SMC Hub
 			'menu_icon'             => 'dashicons-welcome-learn-more',
-			'show_in_rest'          => true, // Enable Gutenberg
-            'has_archive'           => true,
+			'show_in_rest'          => true,
+			'has_archive'           => true,
+			'rewrite'               => [ 'slug' => 'training' ],
+			'map_meta_cap'          => true,
 		];
 
 		register_post_type( 'smc_training', $args );
 	}
 
     /**
-     * Register Taxonomy for tagging content (Generic tagging) if needed, 
-     * but we rely mostly on Quiz linking.
-     * Let's create 'Assessment Category' taxonomy to match Quiz Categories easily.
+     * Register Taxonomy.
      */
     public static function register_access_level_taxonomy(): void {
-         // We might not strictly need a taxonomy if we link directly to Quiz Categories (strings),
-         // but a taxonomy 'smc_quiz_category' shared between Quizzes (meta) and Training (term) is cleaner?
-         // Actually, Quiz Categories are just JSON strings in the Quiz Meta currently.
-         // So for Training, we should just use a simple text field or dropdown populated by JS in editor.
-         // For now, let's keep it simple and stick to Meta.
+         // Placeholder
     }
 
     /**
      * Register Meta Fields.
      */
     public static function register_training_meta(): void {
+        // Linked Quiz
         register_post_meta( 'smc_training', '_linked_quiz_id', [
             'type'         => 'integer',
             'single'       => true,
             'show_in_rest' => true,
         ] );
 
-        register_post_meta( 'smc_training', '_linked_quiz_category', [
+        // Course Structure (Sections & Lessons)
+        register_post_meta( 'smc_training', '_course_sections', [
+            'type'         => 'object', 
+            'single'       => true,
+            'show_in_rest' => [
+                'schema' => [
+                    'type' => 'array',
+                    'items' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'title'   => [ 'type' => 'string' ],
+                            'lessons' => [ 'type' => 'array', 'items' => [ 'type' => 'integer' ] ],
+                        ],
+                    ],
+                ],
+            ],
+        ] );
+
+        // Access Control
+        register_post_meta( 'smc_training', '_access_type', [
+            'type'         => 'string', // 'standalone', 'plan'
+            'single'       => true,
+            'show_in_rest' => true,
+        ] );
+
+        register_post_meta( 'smc_training', '_plan_level', [
+            'type'         => 'string', // 'free', 'basic', 'premium'
+            'single'       => true,
+            'show_in_rest' => true,
+        ] );
+
+        register_post_meta( 'smc_training', '_prerequisite_course_id', [
+            'type'         => 'integer',
+            'single'       => true,
+            'show_in_rest' => true,
+        ] );
+
+        register_post_meta( 'smc_training', '_formatted_price', [
             'type'         => 'string',
             'single'       => true,
             'show_in_rest' => true,
         ] );
+
+        register_post_meta( 'smc_training', '_course_status', [
+             'type'         => 'string', // 'draft', 'published', 'archived'
+             'single'       => true,
+             'show_in_rest' => true,
+         ] );
     }
 
     /**
