@@ -1,8 +1,27 @@
 import { ShieldAlert, BookOpen, CheckCircle, ShoppingCart } from 'lucide-react';
 
-const Overview = ({ data }) => {
+const Overview = ({ data, onNavigateTab }) => {
     const iden = data.business_identity;
     const stats = data.stats;
+    const latestOrderUrl = Array.isArray(data.orders) && data.orders.length > 0
+        ? data.orders[0]?.view_url
+        : '';
+
+    const goToLearning = () => {
+        if (typeof onNavigateTab === 'function') {
+            onNavigateTab('learning');
+        }
+    };
+
+    const goToLatestOrder = () => {
+        if (latestOrderUrl) {
+            window.location.href = latestOrderUrl;
+            return;
+        }
+        if (typeof onNavigateTab === 'function') {
+            onNavigateTab('billing');
+        }
+    };
 
     return (
         <div className="overview-pane">
@@ -73,8 +92,8 @@ const Overview = ({ data }) => {
                     </div>
                     <div className="mini-stat">
                         <div className="stat-info">
-                            <span className="label">Completed</span>
-                            <div className="value" id="stat-completed">{stats?.courses_completed || 0}</div>
+                            <span className="label">Quizzes Completed</span>
+                            <div className="value" id="stat-completed">{stats?.quizzes_completed ?? 0}</div>
                         </div>
                         <CheckCircle size={24} color="#0E7673" opacity={0.4} />
                     </div>
@@ -92,24 +111,34 @@ const Overview = ({ data }) => {
             <div className="quick-actions-section" style={{ marginTop: '40px' }}>
                 <h3 className="section-title">Jump Back In</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                    <div className="dash-card" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '15px' }}>
-                        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(14,118,115,0.1)', display: 'flex', alignItems: 'center', justifyCenter: 'center' }}>
+                    <button
+                        type="button"
+                        className="dash-card"
+                        onClick={goToLearning}
+                        style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '15px', width: '100%', textAlign: 'left', cursor: 'pointer' }}
+                    >
+                        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(14,118,115,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <BookOpen size={20} color="#0E7673" />
                         </div>
                         <div>
                             <h4 style={{ margin: 0, fontSize: '15px' }}>Resume Learning</h4>
                             <p style={{ margin: 0, fontSize: '12px', color: 'var(--dash-text-muted)' }}>Pick up where you left off.</p>
                         </div>
-                    </div>
-                    <div className="dash-card" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '15px' }}>
-                        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(14,118,115,0.1)', display: 'flex', alignItems: 'center', justifyCenter: 'center' }}>
+                    </button>
+                    <button
+                        type="button"
+                        className="dash-card"
+                        onClick={goToLatestOrder}
+                        style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '15px', width: '100%', textAlign: 'left', cursor: 'pointer' }}
+                    >
+                        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(14,118,115,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <ShoppingCart size={20} color="#0E7673" />
                         </div>
                         <div>
                             <h4 style={{ margin: 0, fontSize: '15px' }}>View Latest Order</h4>
                             <p style={{ margin: 0, fontSize: '12px', color: 'var(--dash-text-muted)' }}>Manage your subscriptions.</p>
                         </div>
-                    </div>
+                    </button>
                 </div>
             </div>
         </div>

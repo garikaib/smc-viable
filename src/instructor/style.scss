@@ -51,6 +51,52 @@
     }
 }
 
+.smc-course-builder-app {
+    .smc-sidebar {
+        width: 16rem;
+        min-width: 16rem;
+        transition: width 0.25s ease, min-width 0.25s ease, padding 0.25s ease;
+        overflow: hidden;
+    }
+
+    .smc-sidebar.is-collapsed {
+        width: 5.25rem;
+        min-width: 5.25rem;
+        padding-left: 0.85rem;
+        padding-right: 0.85rem;
+    }
+
+    .smc-sidebar.is-collapsed .smc-brand,
+    .smc-sidebar.is-collapsed .smc-user-actions a,
+    .smc-sidebar.is-collapsed nav button {
+        justify-content: center;
+    }
+
+    .smc-sidebar.is-collapsed .smc-user-actions {
+        padding-top: 1rem;
+    }
+}
+
+.smc-sidebar-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.6rem;
+    border: 1px solid color-mix(in srgb, var(--fallback-bc, #111827) 12%, transparent);
+    background: color-mix(in srgb, var(--fallback-b1, #ffffff) 80%, var(--fallback-b2, #f3f4f6) 20%);
+    color: color-mix(in srgb, var(--fallback-bc, #111827) 72%, transparent);
+    transition: transform 0.2s ease, border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease;
+}
+
+.smc-sidebar-toggle-btn:hover {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, #14b8a6 40%, transparent);
+    color: #0e7673;
+    background: color-mix(in srgb, #14b8a6 12%, var(--fallback-b1, #ffffff) 88%);
+}
+
 // Global resets/utilities for Instructor Hub
 // We will rely on Tailwind for most new things in CourseBuilderApp, 
 // but checking if we need to port anything.
@@ -116,10 +162,8 @@
         h1 {
             font-family: 'Outfit', sans-serif;
             font-weight: 700;
-            background: linear-gradient(135deg, var(--fallback-bc, oklch(var(--bc)/1)) 0%, var(--fallback-bc, oklch(var(--bc)/0.6)) 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
+            color: var(--fallback-bc, #111827);
+            background: none;
             margin: 0;
             letter-spacing: -0.02em;
         }
@@ -171,6 +215,11 @@
     }
 }
 
+[data-theme="dark"] .smc-instructor-header .smc-brand h1,
+.dark-theme .smc-instructor-header .smc-brand h1 {
+    color: #f8fafc;
+}
+
 .smc-instructor-content {
     position: relative;
     z-index: 5;
@@ -182,4 +231,598 @@
 // Course Builder Content Overrides
 .smc-course-builder-content {
     // ... custom styles for inner builder if needed
+}
+
+.smc-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: 0;
+    border-radius: 14px;
+    padding: 0.78rem 1.2rem;
+    font-size: 0.86rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    color: #f8fbfb;
+    background: linear-gradient(135deg, #12a69d 0%, #0d7d78 100%);
+    box-shadow: 0 12px 30px rgba(14, 118, 115, 0.24);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+
+    &:hover {
+        transform: translateY(-1px);
+        filter: brightness(1.05);
+        box-shadow: 0 16px 36px rgba(14, 118, 115, 0.3);
+    }
+
+    &:active {
+        transform: translateY(0);
+    }
+
+    &:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        transform: none;
+        filter: none;
+        box-shadow: none;
+    }
+}
+
+.smc-btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    border-radius: 14px;
+    padding: 0.72rem 1.1rem;
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--fallback-bc, #111827) 84%, transparent);
+    background: color-mix(in srgb, var(--fallback-b1, #ffffff) 85%, var(--fallback-b2, #f3f4f6) 15%);
+    border: 1px solid color-mix(in srgb, var(--fallback-bc, #111827) 16%, transparent);
+    box-shadow: 0 10px 24px rgba(17, 24, 39, 0.08);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+
+    &:hover {
+        transform: translateY(-1px);
+        background: color-mix(in srgb, var(--fallback-b1, #ffffff) 72%, var(--fallback-b2, #f3f4f6) 28%);
+        box-shadow: 0 14px 30px rgba(17, 24, 39, 0.12);
+    }
+
+    &:active {
+        transform: translateY(0);
+    }
+
+    &:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+}
+
+.smc-course-title-editor {
+    min-width: 0;
+}
+
+.smc-course-title-input {
+    width: 100%;
+    min-width: 220px;
+    border: 1px solid color-mix(in srgb, var(--fallback-bc, #111827) 16%, transparent);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--fallback-b1, #ffffff) 90%, var(--fallback-b2, #f3f4f6) 10%);
+    color: var(--fallback-bc, #111827);
+    padding: 0.7rem 0.85rem;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.smc-course-title-input:focus {
+    outline: 2px solid color-mix(in srgb, #14b8a6 35%, transparent);
+    outline-offset: 1px;
+}
+
+.smc-lesson-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.smc-lesson-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    border-radius: 9px;
+    border: 1px solid transparent;
+    padding: 0.28rem 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1;
+    text-decoration: none;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+
+    &:hover {
+        transform: translateY(-1px);
+    }
+}
+
+.smc-lesson-action-edit {
+    color: #0e7673;
+    background: color-mix(in srgb, #14b8a6 13%, transparent);
+    border-color: color-mix(in srgb, #14b8a6 30%, transparent);
+
+    &:hover {
+        color: #ffffff;
+        background: #0e7673;
+        border-color: #0e7673;
+    }
+}
+
+.smc-lesson-action-delete {
+    color: #ef4444;
+    background: color-mix(in srgb, #ef4444 10%, transparent);
+    border-color: color-mix(in srgb, #ef4444 30%, transparent);
+
+    &:hover {
+        color: #ffffff;
+        background: #dc2626;
+        border-color: #dc2626;
+    }
+}
+
+.smc-status-disable {
+    border-color: color-mix(in srgb, #ef4444 30%, transparent);
+    color: color-mix(in srgb, #ef4444 88%, #111827 12%);
+}
+
+.smc-status-enable {
+    border-color: color-mix(in srgb, #14b8a6 35%, transparent);
+    color: color-mix(in srgb, #14b8a6 88%, #111827 12%);
+}
+
+.smc-form-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--fallback-bc, #111827) 70%, transparent);
+}
+
+.smc-form-input {
+    width: 100%;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--fallback-bc, #111827) 16%, transparent);
+    background: color-mix(in srgb, var(--fallback-b1, #ffffff) 90%, var(--fallback-b2, #f3f4f6) 10%);
+    color: var(--fallback-bc, #111827);
+    padding: 0.7rem 0.8rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    letter-spacing: normal;
+    text-transform: none;
+}
+
+.smc-form-input:focus {
+    outline: 2px solid color-mix(in srgb, #14b8a6 35%, transparent);
+    outline-offset: 1px;
+}
+
+.smc-form-textarea {
+    min-height: 110px;
+    resize: vertical;
+}
+
+.smc-video-setting-grid {
+    margin-top: 0.3rem;
+}
+
+.smc-video-setting-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 10px;
+    border: 1px solid color-mix(in srgb, var(--fallback-bc, #111827) 12%, transparent);
+    background: color-mix(in srgb, var(--fallback-b1, #ffffff) 85%, var(--fallback-b2, #f3f4f6) 15%);
+    padding: 0.55rem 0.7rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.smc-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1400;
+    background: rgba(4, 10, 14, 0.45);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem 1.5rem 2rem;
+    overflow-y: auto;
+}
+
+.smc-modal {
+    width: min(640px, 100%);
+    border-radius: 24px;
+    border: 1px solid color-mix(in srgb, var(--fallback-bc, #1f2937) 14%, transparent);
+    background: color-mix(in srgb, var(--fallback-b1, #ffffff) 98%, var(--fallback-b2, #f3f4f6) 2%);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.3);
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+    margin: 0;
+    max-height: calc(100dvh - 3rem);
+    overflow-y: auto;
+    isolation: isolate;
+    animation: smcModalIn 0.28s ease-out;
+
+    h3 {
+        margin: 0;
+        font-family: 'Outfit', 'Inter', sans-serif;
+        font-size: 1.45rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        color: var(--fallback-bc, #111827);
+    }
+
+    .smc-form-group {
+        margin-bottom: 1rem;
+    }
+
+    .smc-modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.65rem;
+        margin-top: 1.25rem;
+    }
+}
+
+.smc-course-modal-overlay {
+    padding-top: 2rem;
+}
+
+.smc-course-modal {
+    &::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+            radial-gradient(circle at 88% 10%, rgba(20, 184, 166, 0.14), transparent 40%),
+            linear-gradient(to bottom, rgba(20, 184, 166, 0.07), transparent 30%);
+        pointer-events: none;
+        z-index: -1;
+    }
+
+    .smc-course-modal-subtitle {
+        margin: 0.45rem 0 1rem;
+        font-size: 0.92rem;
+        color: color-mix(in srgb, var(--fallback-bc, #111827) 70%, transparent);
+        line-height: 1.45;
+    }
+
+    select.smc-invite-input {
+        appearance: none;
+        background-image:
+            linear-gradient(45deg, transparent 50%, color-mix(in srgb, var(--fallback-bc, #111827) 55%, transparent) 50%),
+            linear-gradient(135deg, color-mix(in srgb, var(--fallback-bc, #111827) 55%, transparent) 50%, transparent 50%);
+        background-position:
+            calc(100% - 18px) calc(50% - 3px),
+            calc(100% - 12px) calc(50% - 3px);
+        background-size: 6px 6px, 6px 6px;
+        background-repeat: no-repeat;
+        padding-right: 2.1rem;
+    }
+}
+
+.smc-modal.smc-invite-modal {
+    width: 100%;
+    border-radius: 24px;
+    border: 1px solid color-mix(in srgb, var(--fallback-bc, #1f2937) 14%, transparent);
+    background: color-mix(in srgb, var(--fallback-b1, #ffffff) 92%, transparent);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.26);
+    padding: 1.4rem;
+    position: relative;
+    overflow: hidden;
+    margin: 1.2rem 0;
+    max-height: calc(100dvh - 3rem);
+    overflow-y: auto;
+
+    &::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at top right, rgba(20, 184, 166, 0.14), transparent 55%);
+        pointer-events: none;
+    }
+
+    h3 {
+        position: relative;
+        margin: 0;
+        font-family: 'Outfit', 'Inter', sans-serif;
+        font-size: 1.45rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        color: var(--fallback-bc, #111827);
+    }
+
+    form {
+        position: relative;
+    }
+
+    .smc-form-group {
+        margin-bottom: 1rem;
+    }
+
+    label {
+        display: block;
+        font-size: 0.74rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        margin-bottom: 0.5rem;
+        color: color-mix(in srgb, var(--fallback-bc, #111827) 72%, transparent);
+    }
+
+    .smc-modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.65rem;
+        margin-top: 1.25rem;
+    }
+
+    .smc-student-modal-subtitle {
+        margin: 0.35rem 0 1rem;
+        font-size: 0.88rem;
+        color: color-mix(in srgb, var(--fallback-bc, #111827) 68%, transparent);
+        line-height: 1.45;
+    }
+}
+
+[data-theme="dark"] .smc-modal,
+.dark-theme .smc-modal {
+    background: color-mix(in srgb, var(--fallback-b1, #111827) 95%, #000 5%);
+    border-color: color-mix(in srgb, var(--fallback-bc, #e5e7eb) 18%, transparent);
+    box-shadow: 0 36px 90px rgba(0, 0, 0, 0.55);
+}
+
+@keyframes smcModalIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.985);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.smc-invite-input {
+    width: 100%;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--fallback-bc, #1f2937) 16%, transparent);
+    background: color-mix(in srgb, var(--fallback-b1, #ffffff) 85%, var(--fallback-b2, #f3f4f6) 15%);
+    color: var(--fallback-bc, #111827);
+    padding: 0.72rem 0.85rem;
+    font-size: 0.95rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+    &:focus {
+        outline: none;
+        border-color: rgba(14, 118, 115, 0.65);
+        box-shadow: 0 0 0 4px rgba(14, 118, 115, 0.14);
+    }
+}
+
+.smc-invite-textarea {
+    min-height: 110px;
+    resize: vertical;
+    line-height: 1.45;
+}
+
+.smc-invite-close-btn {
+    width: 34px;
+    height: 34px;
+    border: 0;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: color-mix(in srgb, var(--fallback-bc, #111827) 58%, transparent);
+    background: color-mix(in srgb, var(--fallback-b1, #ffffff) 70%, var(--fallback-b2, #f3f4f6) 30%);
+    transition: color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+
+    &:hover {
+        color: var(--fallback-bc, #111827);
+        background: color-mix(in srgb, var(--fallback-b1, #ffffff) 45%, var(--fallback-b2, #f3f4f6) 55%);
+        transform: translateY(-1px);
+    }
+}
+
+.smc-invite-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 12px;
+    min-width: 132px;
+    padding: 0.7rem 1.1rem;
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+
+    &:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+}
+
+.smc-invite-btn-primary {
+    color: #f8fbfb;
+    background: linear-gradient(135deg, #12a69d 0%, #0d7d78 100%);
+    box-shadow: 0 12px 28px rgba(14, 118, 115, 0.25);
+
+    &:hover {
+        transform: translateY(-1px);
+        filter: brightness(1.04);
+    }
+}
+
+.smc-invite-btn-secondary {
+    color: color-mix(in srgb, var(--fallback-bc, #111827) 78%, transparent);
+    background: color-mix(in srgb, var(--fallback-b2, #f3f4f6) 80%, transparent);
+    border: 1px solid color-mix(in srgb, var(--fallback-bc, #111827) 12%, transparent);
+
+    &:hover {
+        transform: translateY(-1px);
+        background: color-mix(in srgb, var(--fallback-b2, #f3f4f6) 90%, transparent);
+    }
+}
+
+.smc-instructor-toaster {
+    position: fixed;
+    right: 26px;
+    bottom: 26px;
+    z-index: 2000;
+    pointer-events: none;
+}
+
+.smc-toast {
+    pointer-events: auto;
+    min-width: 320px;
+    max-width: 420px;
+    background: color-mix(in srgb, var(--fallback-b1, #ffffff) 90%, transparent);
+    border: 1px solid color-mix(in srgb, var(--fallback-bc, #1f2937) 14%, transparent);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.22);
+    border-radius: 16px;
+    padding: 14px 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    overflow: hidden;
+    animation: smcToastIn 0.45s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+    backdrop-filter: blur(10px);
+
+    &.success {
+        border-left: 4px solid #0ea5a2;
+    }
+
+    &.error {
+        border-left: 4px solid #dc2626;
+    }
+
+    .toast-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 11px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: color-mix(in srgb, var(--fallback-b2, #f3f4f6) 80%, transparent);
+        color: #0ea5a2;
+        flex-shrink: 0;
+    }
+
+    .toast-content {
+        h4 {
+            margin: 0;
+            font-size: 0.9rem;
+            font-weight: 800;
+            color: var(--fallback-bc, #111827);
+        }
+
+        p {
+            margin: 4px 0 0;
+            font-size: 0.8rem;
+            color: color-mix(in srgb, var(--fallback-bc, #111827) 72%, transparent);
+        }
+    }
+
+    .toast-timer {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        height: 3px;
+        background: #0ea5a2;
+        transform-origin: left;
+        animation: smcToastTimer linear forwards;
+    }
+
+    &.error .toast-icon {
+        color: #dc2626;
+    }
+
+    &.error .toast-timer {
+        background: #dc2626;
+    }
+}
+
+@keyframes smcToastIn {
+    from {
+        transform: translateX(44px) scale(0.94);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0) scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes smcToastTimer {
+    from {
+        transform: scaleX(1);
+    }
+
+    to {
+        transform: scaleX(0);
+    }
+}
+
+@media (max-width: 640px) {
+    .smc-modal-overlay {
+        padding: 0.75rem 0.75rem 1.25rem;
+        align-items: flex-start;
+    }
+
+    .smc-modal,
+    .smc-modal.smc-invite-modal {
+        padding: 1rem;
+        max-height: calc(100dvh - 1.5rem);
+        margin: 0;
+    }
+
+    .smc-modal .smc-modal-actions,
+    .smc-modal.smc-invite-modal .smc-modal-actions {
+        flex-direction: column-reverse;
+    }
+
+    .smc-invite-btn {
+        width: 100%;
+    }
+
+    .smc-instructor-toaster {
+        right: 14px;
+        left: 14px;
+        bottom: 14px;
+    }
+
+    .smc-toast {
+        min-width: 0;
+        width: 100%;
+        max-width: 100%;
+    }
 }

@@ -17,27 +17,31 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Email_Service {
 
     /**
-     * Send Course Invitation.
+     * Send Course or Plan Invitation.
      *
      * @param \WP_User $user
-     * @param int $course_id
+     * @param int $item_id Course ID or Plan ID
      * @param string $custom_message
      * @return bool
      */
-    public static function send_invitation( \WP_User $user, int $course_id, string $custom_message = '' ): bool {
-        $course = get_post( $course_id );
-        if ( ! $course ) return false;
+    public static function send_invitation( \WP_User $user, int $item_id, string $custom_message = '' ): bool {
+        $item = get_post( $item_id );
+        if ( ! $item ) return false;
 
-        $subject = sprintf( 'You have been invited to: %s', $course->post_title );
+        $is_plan = ( $item->post_type === 'smc_product' && get_post_meta( $item_id, '_product_type', true ) === 'plan' );
+        $type_label = $is_plan ? 'subscription plan' : 'course';
+
+        $subject = sprintf( 'You have been invited to: %s', $item->post_title );
         
-        $login_url = wp_login_url(); // In a real app, use a magic link generator if available
-        $course_url = home_url( '/student-hub' ); // Redirect to dashboard
+        $login_url = wp_login_url();
+        $hub_url = home_url( '/student-hub' ); 
 
         $message = self::get_template_html( 'invitation', [
             'name' => $user->display_name,
-            'course_title' => $course->post_title,
+            'item_title' => $item->post_title,
+            'item_type' => $type_label,
             'custom_message' => $custom_message,
-            'action_url' => $course_url,
+            'action_url' => $hub_url,
             'login_url' => $login_url
         ] );
 
@@ -116,7 +120,7 @@ class Email_Service {
                 $content = "
                     <h1 style='color: #111827; font-size: 24px;'>You're Invited!</h1>
                     <p>Hi {$args['name']},</p>
-                    <p>You have been invited to join the course: <strong>{$args['course_title']}</strong>.</p>
+                    <p>You have been invited to join the {$args['item_type']}: <strong>{$args['item_title']}</strong>.</p>
                     {$custom_msg_html}
                     <p>Click the button below to access your Learning Hub.</p>
                     <a href='{$args['action_url']}' style='{$style_btn}'>Start Learning</a>

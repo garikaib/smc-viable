@@ -105,6 +105,16 @@
     color: var(--dash-text-muted);
 }
 
+.header-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.assessment-builder-link {
+    text-decoration: none;
+}
+
 .plan-badge {
     padding: 8px 16px;
     border-radius: 100px;
@@ -639,5 +649,329 @@
     .dash-tab {
         margin-right: 20px;
         flex-shrink: 0;
+    }
+}
+
+/* ── Premium Refresh Overrides (2026-02) ── */
+.smc-my-account-page {
+    --dash-bg: color-mix(in srgb, #ffffff 92%, transparent);
+    --dash-card-bg: color-mix(in srgb, #ffffff 74%, #f3f6f9 26%);
+    --dash-card-border: rgba(17, 24, 39, 0.08);
+    --dash-text: #0f172a;
+    --dash-text-muted: #6b7280;
+    --dash-text-faint: #9ca3af;
+    --dash-surface: color-mix(in srgb, #ffffff 90%, #eef2f6 10%);
+    --dash-surface-hover: color-mix(in srgb, #ffffff 72%, #edf2f6 28%);
+    --dash-divider: rgba(17, 24, 39, 0.08);
+    --dash-input-bg: color-mix(in srgb, #ffffff 76%, #eef2f6 24%);
+    --dash-input-border: rgba(17, 24, 39, 0.12);
+    --dash-shadow: 0 30px 85px rgba(5, 12, 20, 0.14);
+    --dash-highlight-bg: linear-gradient(135deg, rgba(14, 118, 115, 0.14), rgba(255, 255, 255, 0.9));
+    --dash-tab-bg: color-mix(in srgb, #ffffff 80%, #f1f5f8 20%);
+    --dash-avatar-border: rgba(255, 255, 255, 0.85);
+    --dash-teal: #0e7673;
+    --dash-teal-bright: #13a69d;
+    --dash-danger: #b3272f;
+
+    min-height: calc(100vh - 40px);
+    padding: 44px 22px 58px;
+    align-items: flex-start;
+}
+
+[data-theme="dark"] .smc-my-account-page {
+    --dash-bg: color-mix(in srgb, #111b20 88%, transparent);
+    --dash-card-bg: color-mix(in srgb, #17232a 76%, #10191f 24%);
+    --dash-card-border: rgba(255, 255, 255, 0.08);
+    --dash-text: #f3f7fb;
+    --dash-text-muted: #a7b3be;
+    --dash-text-faint: #7f8c98;
+    --dash-surface: color-mix(in srgb, #18252c 88%, #121d23 12%);
+    --dash-surface-hover: color-mix(in srgb, #1d2d35 86%, #152028 14%);
+    --dash-divider: rgba(255, 255, 255, 0.08);
+    --dash-input-bg: color-mix(in srgb, #0f171d 88%, #19252d 12%);
+    --dash-input-border: rgba(255, 255, 255, 0.12);
+    --dash-shadow: 0 40px 110px rgba(0, 0, 0, 0.42);
+    --dash-highlight-bg: linear-gradient(135deg, rgba(19, 166, 157, 0.2), rgba(12, 20, 28, 0.95));
+    --dash-tab-bg: color-mix(in srgb, #142027 92%, #1a2a33 8%);
+    --dash-avatar-border: rgba(255, 255, 255, 0.24);
+}
+
+.smc-my-account-page .smc-container {
+    max-width: 1320px;
+}
+
+.smc-my-account-page .smc-dashboard-card {
+    border-radius: 34px;
+}
+
+.smc-my-account-page .smc-dash-header {
+    padding: 34px 38px;
+    background: color-mix(in srgb, var(--dash-surface) 88%, transparent);
+}
+
+.smc-my-account-page .text-wrap h1 {
+    font-size: clamp(1.45rem, 1.1rem + 1.1vw, 2.05rem);
+    letter-spacing: -0.03em;
+}
+
+.smc-my-account-page .member-since {
+    margin-top: 4px;
+    display: inline-block;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
+.smc-my-account-page .plan-badge {
+    padding: 9px 16px;
+    border-radius: 999px;
+    font-size: 0.66rem;
+    letter-spacing: 0.14em;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.16);
+}
+
+.smc-my-account-page .smc-dash-tabs {
+    padding: 16px 30px;
+    gap: 10px;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--dash-divider);
+}
+
+.smc-my-account-page .dash-tab {
+    margin-right: 0;
+    border-bottom: 0;
+    border-radius: 999px;
+    padding: 10px 16px;
+    font-size: 0.76rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 800;
+    background: transparent;
+}
+
+.smc-my-account-page .dash-tab:hover {
+    background: color-mix(in srgb, var(--dash-surface-hover) 85%, transparent);
+}
+
+.smc-my-account-page .dash-tab.active {
+    color: #f8fbfb;
+    background: linear-gradient(135deg, var(--dash-teal-bright) 0%, var(--dash-teal) 100%);
+    box-shadow: 0 12px 28px rgba(14, 118, 115, 0.28);
+}
+
+.smc-my-account-page .dash-tab.logout {
+    color: #d56a72;
+}
+
+.smc-my-account-page .dash-tab.logout:hover {
+    color: #f5b2b8;
+    background: rgba(179, 39, 47, 0.16);
+}
+
+.smc-my-account-page .smc-dash-content {
+    padding: 34px 38px 40px;
+}
+
+.smc-my-account-page .section-title {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    margin-bottom: 16px;
+    color: color-mix(in srgb, var(--dash-text-muted) 88%, transparent);
+}
+
+.smc-my-account-page .dash-card {
+    border-radius: 24px;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.06);
+}
+
+.smc-my-account-page .smc-btn {
+    border-radius: 14px;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+}
+
+.smc-my-account-page .smc-btn-primary {
+    background: linear-gradient(135deg, #12a69d 0%, #0d7d78 100%);
+    box-shadow: 0 12px 30px rgba(14, 118, 115, 0.24);
+}
+
+.smc-my-account-page .smc-btn-primary:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.05);
+    box-shadow: 0 16px 36px rgba(14, 118, 115, 0.3);
+}
+
+.smc-my-account-page .smc-btn-outline {
+    border-color: var(--dash-input-border);
+    background: color-mix(in srgb, var(--dash-surface) 76%, transparent);
+}
+
+.smc-my-account-page .smc-btn-outline:hover {
+    color: var(--dash-teal);
+    border-color: rgba(14, 118, 115, 0.4);
+}
+
+.smc-my-account-page .dash-input {
+    border-radius: 14px;
+    padding: 13px 16px;
+}
+
+.smc-my-account-page .dash-input:focus {
+    box-shadow: 0 0 0 4px rgba(14, 118, 115, 0.16);
+    background: color-mix(in srgb, var(--dash-input-bg) 78%, rgba(14, 118, 115, 0.12) 22%);
+}
+
+.smc-my-account-page .enroll-card {
+    border-radius: 22px;
+}
+
+.smc-my-account-page .enroll-thumb {
+    height: 170px;
+}
+
+.smc-my-account-page .smc-table th {
+    letter-spacing: 0.12em;
+    font-weight: 800;
+}
+
+.smc-my-account-page .smc-table td {
+    font-weight: 500;
+}
+
+.smc-my-account-page .toast-message {
+    border-radius: 16px;
+    padding: 13px 18px;
+    background: color-mix(in srgb, #15242c 88%, transparent);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(8px);
+}
+
+.smc-my-account-page .toast-message.success {
+    border-left: 4px solid #0ea5a2;
+}
+
+.smc-my-account-page .toast-message.error {
+    border-left: 4px solid var(--dash-danger);
+}
+
+.smc-my-account-page .smc-state-card {
+    text-align: center;
+    padding: 90px 32px;
+}
+
+.smc-my-account-page .smc-state-error-title {
+    margin: 0 0 8px;
+    color: var(--dash-danger);
+    font-family: var(--smc-font-heading, 'Outfit', sans-serif);
+}
+
+.smc-my-account-page .smc-state-retry-btn {
+    margin-top: 18px;
+}
+
+.smc-my-account-page .assessment-list {
+    display: grid;
+    gap: 14px;
+}
+
+.smc-my-account-page .assessment-item {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px;
+    border-radius: 16px;
+    border: 1px solid var(--dash-card-border);
+    background: var(--dash-surface);
+}
+
+.smc-my-account-page .assessment-main {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.smc-my-account-page .assessment-main h4 {
+    margin: 0;
+    font-size: 15px;
+    color: var(--dash-text);
+}
+
+.smc-my-account-page .assessment-main p {
+    margin: 2px 0 0;
+    color: var(--dash-text-muted);
+    font-size: 12px;
+}
+
+.smc-my-account-page .assessment-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(14, 118, 115, 0.12);
+    color: #0E7673;
+}
+
+.smc-my-account-page .assessment-score {
+    min-width: 54px;
+    text-align: center;
+    padding: 9px 10px;
+    border-radius: 999px;
+    border: 2px solid #0E7673;
+    font-weight: 900;
+    font-size: 14px;
+}
+
+@media (max-width: 1024px) {
+    .smc-my-account-page .smc-container {
+        max-width: 980px;
+    }
+
+    .smc-my-account-page .smc-dash-content,
+    .smc-my-account-page .smc-dash-header {
+        padding-left: 26px;
+        padding-right: 26px;
+    }
+}
+
+@media (max-width: 768px) {
+    .smc-my-account-page {
+        padding: 22px 12px 40px;
+    }
+
+    .smc-my-account-page .smc-dashboard-card {
+        border-radius: 24px;
+    }
+
+    .smc-my-account-page .smc-dash-tabs {
+        padding: 10px 14px;
+    }
+
+    .smc-my-account-page .dash-tab {
+        padding: 9px 13px;
+        font-size: 0.68rem;
+    }
+
+    .smc-my-account-page .smc-dash-content,
+    .smc-my-account-page .smc-dash-header {
+        padding: 20px 16px;
+    }
+
+    .smc-my-account-page .overview-grid {
+        gap: 20px;
+    }
+
+    .smc-my-account-page .toast-message {
+        left: 14px;
+        right: 14px;
+        bottom: 14px;
+    }
+
+    .smc-my-account-page .assessment-item {
+        grid-template-columns: 1fr;
+        justify-items: start;
     }
 }

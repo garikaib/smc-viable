@@ -34,6 +34,13 @@ export const deleteQuiz = (id) => {
     });
 };
 
+export const migrateQuizzes = () => {
+    return apiFetch({
+        path: '/smc/v1/quizzes/migrate',
+        method: 'POST',
+    });
+};
+
 export const exportQuizzes = async () => {
     const quizzes = await fetchQuizzes();
     return {

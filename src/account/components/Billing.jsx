@@ -64,7 +64,7 @@ const Billing = ({ data }) => {
 
             <div style={{ marginTop: '30px', padding: '20px', background: 'rgba(14,118,115,0.05)', borderRadius: '15px', border: '1px solid rgba(14,118,115,0.1)' }}>
                 <p style={{ margin: 0, fontSize: '13px', color: 'var(--dash-text-muted)', lineHeight: '1.6' }}>
-                    <strong>Need Help with Billing?</strong> If you have questions about your invoices or need to update your payment method, please contact our support team at <a href="mailto:support@strategywingate.com" style={{ color: '#0E7673', fontWeight: 700 }}>support@strategywingate.com</a>.
+                    <strong>Need Help with Billing?</strong> If you have questions about your invoices or need to update your payment method, contact us at <a href="mailto:support@smcviable.com" style={{ color: '#0E7673', fontWeight: 700 }}>support@smcviable.com</a> or WhatsApp <a href="https://wa.me/263776207487" style={{ color: '#0E7673', fontWeight: 700 }}>+263 77 620 7487</a>.
                 </p>
             </div>
         </div>

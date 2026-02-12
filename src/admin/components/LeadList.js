@@ -65,6 +65,7 @@ export default function LeadList() {
             'Name': l.name || '',
             'Email': l.email,
             'Phone': l.phone,
+            'Delivery': l.delivery || '',
             'Quiz ID': l.quiz_id
         }));
 
@@ -79,6 +80,7 @@ export default function LeadList() {
             { wch: 25 }, // Name
             { wch: 30 }, // Email
             { wch: 15 }, // Phone
+            { wch: 18 }, // Delivery
             { wch: 10 }, // Quiz ID
         ];
         ws['!cols'] = colWidths;
@@ -116,6 +118,7 @@ export default function LeadList() {
                                 <th className="p-4 font-semibold">{__('Name', 'smc-viable')}</th>
                                 <th className="p-4 font-semibold">{__('Email', 'smc-viable')}</th>
                                 <th className="p-4 font-semibold">{__('Phone', 'smc-viable')}</th>
+                                <th className="p-4 font-semibold">{__('Delivery', 'smc-viable')}</th>
                                 <th className="p-4 font-semibold">{__('Quiz ID', 'smc-viable')}</th>
                                 <th className="p-4 font-semibold">{__('Actions', 'smc-viable')}</th>
                             </tr>
@@ -127,6 +130,7 @@ export default function LeadList() {
                                     <td className="p-4 font-medium">{lead.name}</td>
                                     <td className="p-4 text-blue-600">{lead.email}</td>
                                     <td className="p-4 text-gray-600">{lead.phone}</td>
+                                    <td className="p-4 text-gray-600">{lead.delivery || '-'}</td>
                                     <td className="p-4 text-gray-500 text-xs">{lead.quiz_id}</td>
                                     <td className="p-4">
                                         <Button
@@ -152,4 +156,3 @@ export default function LeadList() {
         </div>
     );
 }
-

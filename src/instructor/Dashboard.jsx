@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from '@wordpress/element';
-import { Users, BookOpen, CheckCircle, TrendingUp, Layout } from 'lucide-react';
+import { Users, BookOpen, CheckCircle, TrendingUp, TrendingDown, Minus, Layout, UserCircle2 } from 'lucide-react';
 import { gsap } from 'gsap';
 
-export default function Dashboard() {
+export default function Dashboard({ onOpenProfile }) {
     const [stats, setStats] = useState(null);
     const statsRef = useRef(null);
 
@@ -22,12 +22,13 @@ export default function Dashboard() {
             });
     }, []);
 
-    if (!stats) return <div className="smc-loading">Loading boutique stats...</div>;
+    if (!stats) return <div className="smc-loading">Loading stats...</div>;
 
+    const trends = stats.trends || {};
     const statItems = [
-        { label: 'TOTAL STUDENTS', value: stats.total_students, icon: Users, color: '--smc-teal' },
-        { label: 'ACTIVE COURSES', value: stats.active_courses, icon: BookOpen, color: '--smc-gold' },
-        { label: 'COMPLETIONS TODAY', value: stats.completions_today, icon: CheckCircle, color: '--smc-red' }
+        { label: 'TOTAL STUDENTS', value: stats.total_students, trend: Number(trends.total_students || 0), icon: Users, color: '--smc-teal' },
+        { label: 'ACTIVE COURSES', value: stats.active_courses, trend: Number(trends.active_courses || 0), icon: BookOpen, color: '--smc-gold' },
+        { label: 'COMPLETIONS TODAY', value: stats.completions_today, trend: Number(trends.completions_today || 0), icon: CheckCircle, color: '--smc-red' }
     ];
 
     return (
@@ -45,6 +46,13 @@ export default function Dashboard() {
             <div className="smc-stats-grid grid grid-cols-1 md:grid-cols-3 gap-8 mb-16" ref={statsRef}>
                 {statItems.map((item, index) => {
                     const Icon = item.icon;
+                    const isPositive = item.trend > 0;
+                    const isNegative = item.trend < 0;
+                    const TrendIcon = isPositive ? TrendingUp : (isNegative ? TrendingDown : Minus);
+                    const trendClass = isPositive
+                        ? 'text-green-500 dark:text-green-400 bg-green-500/10'
+                        : (isNegative ? 'text-red-500 dark:text-red-400 bg-red-500/10' : 'text-base-content/60 bg-base-content/10');
+                    const trendSign = isPositive ? '+' : '';
                     return (
                         <div key={index} className="smc-stat-card smc-glass-card group hover:bg-base-content/5 transition-all duration-500 p-8 relative overflow-hidden bg-base-200/50 backdrop-blur-xl border border-base-content/5">
                             <div className="absolute -right-6 -top-6 text-base-content/5 transform rotate-12 group-hover:scale-110 transition-transform duration-700">
@@ -58,9 +66,9 @@ export default function Dashboard() {
                                 </div>
                                 <div className="flex items-end gap-3">
                                     <span className="text-5xl font-bold text-base-content tracking-tighter">{item.value}</span>
-                                    <div className="flex items-center gap-1 text-green-500 dark:text-green-400 text-sm font-medium mb-1.5 bg-green-500/10 px-2 py-0.5 rounded">
-                                        <TrendingUp size={12} />
-                                        <span>+12%</span>
+                                    <div className={`flex items-center gap-1 text-sm font-medium mb-1.5 px-2 py-0.5 rounded ${trendClass}`}>
+                                        <TrendIcon size={12} />
+                                        <span>{trendSign}{item.trend}%</span>
                                     </div>
                                 </div>
                             </div>
@@ -98,6 +106,31 @@ export default function Dashboard() {
                         {/* Decorative Blur */}
                         <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-teal-500/10 rounded-full blur-[80px] group-hover:bg-teal-500/20 transition-colors duration-500"></div>
                     </a>
+
+                    <button
+                        type="button"
+                        onClick={() => onOpenProfile && onOpenProfile()}
+                        className="group relative overflow-hidden rounded-3xl bg-base-200 border border-base-content/5 hover:border-blue-500/30 transition-all duration-500 shadow-md text-left"
+                    >
+                        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
+                        <div className="relative p-10 z-10">
+                            <div className="w-14 h-14 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-6 text-blue-600 dark:text-blue-400 group-hover:scale-110 group-hover:bg-blue-500/20 transition-all duration-500">
+                                <UserCircle2 size={28} />
+                            </div>
+
+                            <h4 className="text-2xl font-bold text-base-content mb-3">Instructor Profile</h4>
+                            <p className="text-base-content/60 mb-8 max-w-sm leading-relaxed">
+                                Build your instructor intro, bio, skills, experience, and social media links for student visibility.
+                            </p>
+
+                            <div className="flex items-center text-blue-600 dark:text-blue-400 font-bold tracking-wide text-sm group-hover:translate-x-2 transition-transform duration-300">
+                                OPEN PROFILE BUILDER <Layout size={16} className="ml-2" />
+                            </div>
+                        </div>
+
+                        <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-blue-500/10 rounded-full blur-[80px] group-hover:bg-blue-500/20 transition-colors duration-500"></div>
+                    </button>
                 </div>
             </div>
         </div>

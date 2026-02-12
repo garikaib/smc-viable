@@ -1,5 +1,9 @@
 export default function Cart({ cart, onRemove, onCheckout, loading }) {
-    const total = cart.reduce((acc, item) => acc + item.price, 0);
+    const total = cart.reduce((acc, item) => {
+        // Plan-included courses should be free in the cart
+        if (item.can_enroll_now) return acc;
+        return acc + item.price;
+    }, 0);
 
     if (cart.length === 0) {
         return (
@@ -14,15 +18,22 @@ export default function Cart({ cart, onRemove, onCheckout, loading }) {
         <div className="cart-container">
             <div className="cart-items">
                 <h2>Your Selection</h2>
-                {cart.map(item => (
-                    <div key={item.id} className="cart-item">
-                        <div className="item-info">
-                            <h4>{item.title}</h4>
-                            <span className="price">${item.price.toFixed(2)}</span>
+                {cart.map(item => {
+                    const isFreeViaPlan = Boolean(item.can_enroll_now);
+                    return (
+                        <div key={item.id} className="cart-item">
+                            <div className="item-info">
+                                <h4>{item.title}</h4>
+                                {isFreeViaPlan ? (
+                                    <span className="price included">$0.00 <small>(included in plan)</small></span>
+                                ) : (
+                                    <span className="price">${item.price.toFixed(2)}</span>
+                                )}
+                            </div>
+                            <button onClick={() => onRemove(item.id)} className="btn-remove">Remove</button>
                         </div>
-                        <button onClick={() => onRemove(item.id)} className="btn-remove">Remove</button>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
 
             <div className="cart-summary">

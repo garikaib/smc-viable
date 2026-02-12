@@ -1,0 +1,21 @@
+#!/usr/bin/env sh
+set -eu
+
+PLUGIN_DIR="/home/garikaib/Documents/sites/smc-wp/wp-content/plugins/smc-viable"
+
+if ! command -v php >/dev/null 2>&1; then
+  echo "Error: php is not installed or not in PATH." >&2
+  exit 1
+fi
+
+echo "Running php -l (excluding vendor/assets/build dirs)..."
+
+find "$PLUGIN_DIR" \
+  -type d \( -name vendor -o -name node_modules -o -name build -o -name dist -o -name assets -o -name data \) -prune \
+  -o -type f -name "*.php" -print0 \
+| while IFS= read -r -d '' file; do
+    echo "Linting $file"
+    php -l "$file"
+  done
+
+echo "PHP lint completed."

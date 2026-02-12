@@ -10,10 +10,10 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * Covers:
  *  - Lessons (video + text types)
- *  - Courses (standalone + plan-based at free/basic/premium)
+ *  - Courses (standalone + plan-based at free/basic/standard)
  *  - Assessments (Basic + Advanced quizzes)
  *  - Quiz enrollment rules (score → course mapping)
- *  - Test users (free / basic / premium plan levels)
+ *  - Test users (free / basic / standard plan levels)
  *  - Enrollments (manual, invitation source types)
  *  - Products (plan subscription + standalone course purchase)
  *  - Partial progress data
@@ -21,12 +21,49 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Seeder {
 
     /**
+     * Find a post by exact title and post type (replacement for deprecated get_page_by_title).
+     *
+     * @param string $title Post title.
+     * @param string $post_type Post type.
+     * @return \WP_Post|null
+     */
+    private static function find_post_by_title( string $title, string $post_type ): ?\WP_Post {
+        $query = new \WP_Query( [
+            'post_type'      => $post_type,
+            'post_status'    => 'any',
+            'posts_per_page' => 1,
+            'title'          => $title,
+            'no_found_rows'  => true,
+            'fields'         => 'ids',
+        ] );
+
+        if ( empty( $query->posts ) ) {
+            return null;
+        }
+
+        $post_id = (int) $query->posts[0];
+        return $post_id ? get_post( $post_id ) : null;
+    }
+
+    /**
      * Register WP-CLI commands.
      */
     public static function register_commands() {
         if ( defined( 'WP_CLI' ) && WP_CLI ) {
             \WP_CLI::add_command( 'smc seed', [ __CLASS__, 'seed_content' ] );
+            require_once __DIR__ . '/class-legacy-migration-seeder.php';
+            \WP_CLI::add_command( 'smc migrate-legacy', [ '\SMC\Viable\Legacy_Migration_Seeder', 'run_cli' ] );
         }
+    }
+
+    /**
+     * Run legacy migration seeder and return logs.
+     *
+     * @return array<int,string>
+     */
+    public static function migrate_legacy_data(): array {
+        require_once __DIR__ . '/class-legacy-migration-seeder.php';
+        return Legacy_Migration_Seeder::run();
     }
 
     /**
@@ -36,6 +73,7 @@ class Seeder {
      */
     public static function seed_content() {
         global $wpdb;
+        Plan_Tiers::set_levels( [ 'free', 'basic', 'standard' ] );
         $data = self::get_data();
         $logs = [];
 
@@ -44,7 +82,7 @@ class Seeder {
         // ──────────────────────────────────────────────
         $quiz_map = []; // key → post ID
         foreach ( $data['assessments'] as $key => $quiz_data ) {
-            $existing = get_page_by_title( $quiz_data['title'], OBJECT, 'smc_quiz' );
+            $existing = self::find_post_by_title( $quiz_data['title'], 'smc_quiz' );
             if ( $existing ) {
                 $quiz_map[ $key ] = $existing->ID;
                 $logs[] = "Quiz '{$quiz_data['title']}' exists (ID: {$existing->ID}). Skipping.";
@@ -63,10 +101,14 @@ class Seeder {
                     return $item;
                 }, $quiz_data['items'] );
 
-                update_post_meta( $post_id, '_smc_quiz_questions', $questions );
+                if ( class_exists( '\SMC\Viable\Quiz_Question_Schema' ) ) {
+                    update_post_meta( $post_id, '_smc_quiz_questions', \SMC\Viable\Quiz_Question_Schema::normalize_questions( $questions ) );
+                } else {
+                    update_post_meta( $post_id, '_smc_quiz_questions', $questions );
+                }
 
                 if ( isset( $quiz_data['plan_level'] ) ) {
-                    update_post_meta( $post_id, '_smc_quiz_plan_level', $quiz_data['plan_level'] );
+                    update_post_meta( $post_id, '_smc_quiz_plan_level', Plan_Tiers::normalize_or_default( (string) $quiz_data['plan_level'], 'free' ) );
                 }
 
                 $quiz_map[ $key ] = $post_id;
@@ -79,7 +121,7 @@ class Seeder {
         // ──────────────────────────────────────────────
         $lesson_map = []; // key → post ID
         foreach ( $data['lessons'] as $key => $lesson_data ) {
-            $existing = get_page_by_title( $lesson_data['title'], OBJECT, 'smc_lesson' );
+            $existing = self::find_post_by_title( $lesson_data['title'], 'smc_lesson' );
             if ( $existing ) {
                 $lesson_map[ $key ] = $existing->ID;
                 $logs[] = "Lesson '{$lesson_data['title']}' exists (ID: {$existing->ID}). Skipping.";
@@ -111,7 +153,7 @@ class Seeder {
         // ──────────────────────────────────────────────
         $course_map = []; // key → post ID
         foreach ( $data['courses'] as $key => $course_data ) {
-            $existing = get_page_by_title( $course_data['title'], OBJECT, 'smc_training' );
+            $existing = self::find_post_by_title( $course_data['title'], 'smc_training' );
             if ( $existing ) {
                 $course_map[ $key ] = $existing->ID;
                 $logs[] = "Course '{$course_data['title']}' exists (ID: {$existing->ID}). Skipping.";
@@ -128,7 +170,7 @@ class Seeder {
             if ( ! is_wp_error( $post_id ) ) {
                 update_post_meta( $post_id, '_access_type', $course_data['access_type'] );
                 if ( isset( $course_data['plan_level'] ) ) {
-                    update_post_meta( $post_id, '_plan_level', $course_data['plan_level'] );
+                    update_post_meta( $post_id, '_plan_level', Plan_Tiers::normalize_or_default( (string) $course_data['plan_level'], 'free' ) );
                 }
 
                 // Build sections array with resolved lesson IDs
@@ -157,7 +199,7 @@ class Seeder {
         // 4. Products (Plan Subscriptions + Standalone Purchases)
         // ──────────────────────────────────────────────
         foreach ( $data['products'] as $key => $prod ) {
-            $existing = get_page_by_title( $prod['title'], OBJECT, 'smc_product' );
+            $existing = self::find_post_by_title( $prod['title'], 'smc_product' );
             if ( $existing ) {
                 $logs[] = "Product '{$prod['title']}' exists. Skipping.";
                 continue;
@@ -175,12 +217,14 @@ class Seeder {
                 update_post_meta( $post_id, '_product_type', $prod['product_type'] );
 
                 if ( $prod['product_type'] === 'plan' && isset( $prod['plan_level'] ) ) {
-                    update_post_meta( $post_id, '_plan_level', $prod['plan_level'] );
+                    update_post_meta( $post_id, '_plan_level', Plan_Tiers::normalize_or_default( (string) $prod['plan_level'], 'free' ) );
                 }
                 if ( $prod['product_type'] === 'single' && isset( $prod['linked_course'] ) ) {
                     $cid = $course_map[ $prod['linked_course'] ] ?? 0;
                     if ( $cid ) {
                         update_post_meta( $post_id, '_linked_course_id', $cid );
+                        update_post_meta( $post_id, '_linked_training_id', $cid );
+                        update_post_meta( $cid, '_linked_product_id', $post_id );
                     }
                 }
                 if ( isset( $prod['features'] ) ) {
@@ -192,7 +236,7 @@ class Seeder {
         }
 
         // ──────────────────────────────────────────────
-        // 5. Test Users (free / basic / premium)
+        // 5. Test Users (free / basic / standard)
         // ──────────────────────────────────────────────
         $user_map = []; // key → user ID
         foreach ( $data['test_users'] as $key => $u ) {
@@ -200,7 +244,7 @@ class Seeder {
             if ( $existing ) {
                 $user_map[ $key ] = $existing->ID;
                 // Ensure plan is set even if user already exists
-                update_user_meta( $existing->ID, '_smc_user_plan', $u['plan'] );
+                update_user_meta( $existing->ID, '_smc_user_plan', Plan_Tiers::normalize_or_default( (string) $u['plan'], 'free' ) );
                 $logs[] = "User '{$u['email']}' exists (ID: {$existing->ID}). Plan set to '{$u['plan']}'.";
                 continue;
             }
@@ -210,7 +254,7 @@ class Seeder {
                 $wp_user = get_userdata( $uid );
                 $wp_user->set_role( $u['role'] );
                 wp_update_user( [ 'ID' => $uid, 'display_name' => $u['display_name'] ] );
-                update_user_meta( $uid, '_smc_user_plan', $u['plan'] );
+                update_user_meta( $uid, '_smc_user_plan', Plan_Tiers::normalize_or_default( (string) $u['plan'], 'free' ) );
                 $user_map[ $key ] = $uid;
                 $logs[] = "✓ Created user: {$u['display_name']} ({$u['email']}) — plan: {$u['plan']}";
             }
@@ -344,7 +388,7 @@ class Seeder {
                 'copy_intro'   => [
                     'title'    => 'The Power of Words',
                     'type'     => 'video',
-                    'video'    => 'https://vimeo.com/836423971',
+                    'video'    => 'https://www.youtube.com/watch?v=ScMzIvxBSi4', // Placeholder YouTube
                     'duration' => 12,
                     'content'  => '<h2>Why Copywriting?</h2><p>In this lesson we explore why copywriting is the single highest-ROI skill any entrepreneur can learn. Great copy turns strangers into customers and customers into advocates.</p><h3>Key Takeaways</h3><ul><li>Copy is the bridge between your product and your market.</li><li>Even small improvements in copy can 2–3× your conversion rates.</li><li>Every entrepreneur writes copy — emails, ads, proposals.</li></ul>',
                 ],
@@ -363,7 +407,7 @@ class Seeder {
                 'copy_headlines' => [
                     'title'    => 'Headline Mastery',
                     'type'     => 'video',
-                    'video'    => 'https://vimeo.com/836423971',
+                    'video'    => 'https://www.youtube.com/watch?v=ScMzIvxBSi4',
                     'duration' => 15,
                     'content'  => '<h2>80% of people only read the headline</h2><p>Your headline is your first (and maybe only) impression. This lesson covers 7 proven headline formulas.</p>',
                 ],
@@ -389,7 +433,7 @@ class Seeder {
                     'content'  => '<h2>Know What You Owe</h2><p>From PAYE to VAT to provisional tax — a practical walkthrough of your obligations as a business owner.</p>',
                 ],
 
-                // Growth Hacking lessons (premium plan)
+                // Growth Hacking lessons (standard plan)
                 'growth_ads'   => [
                     'title'    => 'Scaling via Paid Ads',
                     'type'     => 'video',
@@ -424,6 +468,28 @@ class Seeder {
                     'type'     => 'text',
                     'duration' => 8,
                     'content'  => '<h2>Don\'t Build What Nobody Wants</h2><p>Lean validation techniques — talk to customers before you write code or sign a lease.</p>',
+                ],
+
+                // African Business Strategy (New Course)
+                'abs_intro' => [
+                    'title'    => 'The Informal Economy',
+                    'type'     => 'video',
+                    'video'    => 'https://www.youtube.com/watch?v=ScMzIvxBSi4',
+                    'duration' => 14,
+                    'content'  => '<h2>The Hidden Engine of Growth</h2><p>The informal sector accounts for 80% of employment in many African nations. Understanding how it operates is key to unlocking mass-market strategies.</p>',
+                ],
+                'abs_logistics' => [
+                    'title'    => 'Supply Chain Logistics',
+                    'type'     => 'video',
+                    'video'    => 'https://www.youtube.com/watch?v=ScMzIvxBSi4',
+                    'duration' => 22,
+                    'content'  => '<h2>Overcoming Last-Mile Challenges</h2><p>How successful companies navigate infrastructure gaps to deliver goods reliably.</p>',
+                ],
+                'abs_mobile' => [
+                    'title'    => 'Mobile Money Revolution',
+                    'type'     => 'text',
+                    'duration' => 10,
+                    'content'  => '<h2>Leapfrogging Banking</h2><p>Mobile money isn\'t just payments; it\'s credit, savings, and insurance. We study the MPESA model and its replicability.</p>',
                 ],
             ],
 
@@ -478,12 +544,12 @@ class Seeder {
                     ],
                 ],
 
-                // Plan: premium — requires Premium plan
+                // Plan: standard — requires Standard plan
                 'growth_hacking' => [
                     'title'       => 'Extreme Growth Hacking',
                     'description' => 'Advanced strategies for rapid, profitable scaling.',
                     'access_type' => 'plan',
-                    'plan_level'  => 'premium',
+                    'plan_level'  => 'standard',
                     'sections'    => [
                         [
                             'title'       => 'Module 1: Paid Acquisition',
@@ -492,6 +558,23 @@ class Seeder {
                         [
                             'title'       => 'Module 2: Product-Led & Retention',
                             'lesson_keys' => [ 'growth_viral', 'growth_retention' ],
+                        ],
+                    ],
+                ],
+
+                // African Business Strategy
+                'african_strategy' => [
+                    'title'       => 'African Business Strategy',
+                    'description' => 'Navigating the unique challenges and opportunities of the African market.',
+                    'access_type' => 'standalone',
+                    'sections'    => [
+                        [
+                            'title'       => 'Module 1: Market Context',
+                            'lesson_keys' => [ 'abs_intro', 'abs_mobile' ],
+                        ],
+                        [
+                            'title'       => 'Module 2: Operations',
+                            'lesson_keys' => [ 'abs_logistics' ],
                         ],
                     ],
                 ],
@@ -507,13 +590,13 @@ class Seeder {
                     'plan_level'   => 'basic',
                     'features'     => [ 'All Basic courses', 'Community access', 'Monthly webinars' ],
                 ],
-                'plan_premium' => [
-                    'title'        => 'Premium Plan — Monthly',
+                'plan_standard' => [
+                    'title'        => 'Standard Plan — Monthly',
                     'description'  => 'Full access to every course including advanced growth strategies.',
                     'price'        => 79,
                     'product_type' => 'plan',
-                    'plan_level'   => 'premium',
-                    'features'     => [ 'All courses (Basic + Premium)', '1-on-1 coaching', 'Priority support' ],
+                    'plan_level'   => 'standard',
+                    'features'     => [ 'All courses (Basic + Standard)', '1-on-1 coaching', 'Priority support' ],
                 ],
                 'single_copywriting' => [
                     'title'         => 'Copywriting Masterclass — One-time',
@@ -522,6 +605,14 @@ class Seeder {
                     'product_type'  => 'single',
                     'linked_course' => 'copywriting',
                     'features'      => [ 'Lifetime access', '4 video + text lessons', 'Certificate of completion' ],
+                ],
+                'single_abs' => [
+                    'title'         => 'African Business Strategy — One-time',
+                    'description'   => 'Unlock the secrets of the continent\'s informal economy.',
+                    'price'         => 199,
+                    'product_type'  => 'single',
+                    'linked_course' => 'african_strategy',
+                    'features'      => [ 'Lifetime access', 'Mobile Money Case Studies', 'Logistics Frameworks' ],
                 ],
             ],
 
@@ -543,13 +634,13 @@ class Seeder {
                     'role'         => 'subscriber',
                     'plan'         => 'basic',
                 ],
-                'student_premium' => [
-                    'username'     => 'student_premium',
-                    'email'        => 'premium@test.local',
+                'student_standard' => [
+                    'username'     => 'student_standard',
+                    'email'        => 'standard@test.local',
                     'password'     => 'TestPass123!',
-                    'display_name' => 'Premium Student',
+                    'display_name' => 'Standard Student',
                     'role'         => 'subscriber',
-                    'plan'         => 'premium',
+                    'plan'         => 'standard',
                 ],
                 'instructor' => [
                     'username'     => 'instructor_test',
@@ -557,7 +648,7 @@ class Seeder {
                     'password'     => 'TestPass123!',
                     'display_name' => 'Test Instructor',
                     'role'         => 'editor',
-                    'plan'         => 'premium',
+                    'plan'         => 'standard',
                 ],
             ],
 
@@ -571,9 +662,9 @@ class Seeder {
                     'source'     => 'invitation',
                     'meta'       => [ 'invited_by' => 'instructor' ],
                 ],
-                // Premium student manually enrolled in Copywriting
+                // Standard student manually enrolled in Copywriting
                 [
-                    'user_key'   => 'student_premium',
+                    'user_key'   => 'student_standard',
                     'course_key' => 'copywriting',
                     'source'     => 'manual',
                 ],
@@ -635,7 +726,7 @@ class Seeder {
             'assessments' => [
                 'free_public' => [
                     'title'      => 'Free Business Viability Assessment',
-                    'plan_level' => 'public',
+                    'plan_level' => 'free',
                     'items'      => [
                         [
                             'id'       => 'basic_6',
@@ -937,14 +1028,14 @@ class Seeder {
                     'answers'  => [ 'basic_10' => 70, 'basic_11' => 80 ],
                 ],
                 [
-                    'user_key' => 'student_premium',
+                    'user_key' => 'student_standard',
                     'quiz_key' => 'basic',
                     'score'    => 85,
                     'date'     => date( 'Y-m-d H:i:s', strtotime('-10 days') ),
                     'answers'  => [ 'basic_10' => 90, 'basic_11' => 80 ],
                 ],
                 [
-                    'user_key' => 'student_premium',
+                    'user_key' => 'student_standard',
                     'quiz_key' => 'advanced',
                     'score'    => 65,
                     'date'     => date( 'Y-m-d H:i:s', strtotime('-2 days') ),
@@ -962,14 +1053,14 @@ class Seeder {
                     'answers'  => [ 'basic_10' => 70, 'basic_11' => 80 ],
                 ],
                 [
-                    'user_key' => 'student_premium',
+                    'user_key' => 'student_standard',
                     'quiz_key' => 'basic',
                     'score'    => 85,
                     'date'     => date( 'Y-m-d H:i:s', strtotime('-10 days') ),
                     'answers'  => [ 'basic_10' => 90, 'basic_11' => 80 ],
                 ],
                 [
-                    'user_key' => 'student_premium',
+                    'user_key' => 'student_standard',
                     'quiz_key' => 'advanced',
                     'score'    => 65,
                     'date'     => date( 'Y-m-d H:i:s', strtotime('-2 days') ),

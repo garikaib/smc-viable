@@ -38,10 +38,26 @@ $font-body: 'Inter', sans-serif;
 // Course Player Layout
 .smc-course-player {
     @apply fixed inset-0 z-[2000] bg-base-100 flex overflow-hidden;
+    height: 100dvh;
+    --smc-player-top-offset: 0px;
+}
+
+/* Prevent WP admin bar from obscuring the fixed course player for logged-in users. */
+body.admin-bar .smc-course-player {
+    --smc-admin-bar-offset: var(--wp-admin--admin-bar--height, 32px);
+    --smc-player-top-offset: var(--smc-admin-bar-offset);
+    top: var(--smc-admin-bar-offset);
+}
+
+@media (max-width: 782px) {
+    body.admin-bar .smc-course-player {
+        --smc-admin-bar-offset: var(--wp-admin--admin-bar--height, 46px);
+    }
 }
 
 .smc-player-sidebar {
     @apply w-80 bg-base-200 border-r border-base-content/5 flex flex-col h-full;
+    z-index: 25;
 
     .smc-sidebar-header {
         @apply p-6 border-b border-base-content/5 bg-base-100;
@@ -101,9 +117,22 @@ $font-body: 'Inter', sans-serif;
     .smc-player-header {
         @apply h-[72px] border-b border-base-content/5 flex items-center px-10 bg-base-100/50 backdrop-blur-md sticky top-0 z-10;
 
+        .smc-mobile-tools {
+            @apply hidden;
+        }
+
+        .smc-player-title-wrap {
+            @apply w-full flex items-center justify-between gap-4;
+        }
+
         h1 {
             @apply text-xl font-black text-base-content tracking-tight;
             font-family: 'Outfit', sans-serif;
+        }
+
+        .smc-instructor-link-btn {
+            @apply inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wide border border-base-content/15 text-base-content/70 hover:text-base-content hover:bg-base-content/5 transition-colors;
+            background: none;
         }
     }
 
@@ -146,6 +175,7 @@ $font-body: 'Inter', sans-serif;
 
 .smc-notes-sidebar {
     @apply w-80 bg-base-200/50 border-l border-base-content/5 flex flex-col h-full backdrop-blur-md;
+    z-index: 25;
 
     h3 {
         @apply p-6 pb-2 text-xs font-black uppercase text-base-content/40 tracking-widest;
@@ -158,6 +188,106 @@ $font-body: 'Inter', sans-serif;
 
     .smc-notes-status {
         @apply p-4 px-6 text-[10px] font-bold text-base-content/30 border-t border-base-content/5 bg-base-content/5;
+    }
+}
+
+.smc-mobile-overlay {
+    @apply hidden;
+}
+
+.smc-instructor-fab {
+    position: fixed;
+    right: 1.25rem;
+    bottom: 1.25rem;
+    z-index: 35;
+    width: 56px;
+    height: 56px;
+    border-radius: 999px;
+    border: 2px solid color-mix(in srgb, var(--fallback-b1, #ffffff) 80%, transparent);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.24);
+    overflow: hidden;
+    background: color-mix(in srgb, var(--fallback-b1, #ffffff) 90%, var(--fallback-b2, #f3f4f6) 10%);
+    color: var(--fallback-bc, #111827);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+
+    img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+}
+
+.smc-instructor-modal-overlay {
+    @apply fixed inset-0 bg-black/55 backdrop-blur-sm z-40 flex items-center justify-center p-4;
+}
+
+.smc-instructor-modal {
+    width: min(680px, 100%);
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    border-radius: 1rem;
+    border: 1px solid color-mix(in srgb, var(--fallback-bc, #111827) 15%, transparent);
+    background: color-mix(in srgb, var(--fallback-b1, #ffffff) 96%, var(--fallback-b2, #f3f4f6) 4%);
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.32);
+    padding: 1.25rem;
+    position: relative;
+
+    section {
+        margin-top: 1rem;
+    }
+
+    h2 {
+        @apply text-2xl font-black tracking-tight;
+        font-family: $font-heading;
+    }
+
+    h3 {
+        @apply text-sm font-black uppercase tracking-widest text-base-content/50 mb-2;
+    }
+
+    p {
+        @apply text-sm leading-relaxed text-base-content/80 whitespace-pre-line;
+    }
+}
+
+.smc-instructor-modal-close {
+    @apply absolute top-3 right-3 w-8 h-8 rounded-full border border-base-content/15 text-base-content/60 hover:text-base-content hover:bg-base-content/5 flex items-center justify-center;
+    background: none;
+}
+
+.smc-instructor-modal-head {
+    @apply flex items-center gap-4 pr-10;
+}
+
+.smc-instructor-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 999px;
+    object-fit: cover;
+    border: 1px solid color-mix(in srgb, var(--fallback-bc, #111827) 12%, transparent);
+}
+
+.smc-instructor-avatar-fallback {
+    @apply flex items-center justify-center bg-base-content/5 text-base-content/60;
+}
+
+.smc-instructor-skills {
+    @apply flex flex-wrap gap-2;
+
+    span {
+        @apply px-2.5 py-1 rounded-full text-xs font-bold bg-teal-500/10 text-teal-600 border border-teal-500/20;
+    }
+}
+
+.smc-instructor-links {
+    @apply flex flex-wrap gap-2;
+
+    a {
+        @apply inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide border border-base-content/15 text-base-content/75 hover:text-base-content hover:bg-base-content/5;
+        text-decoration: none;
     }
 }
 
@@ -211,7 +341,38 @@ $font-body: 'Inter', sans-serif;
 }
 
 .smc-btn-primary {
-    @apply bg-teal-500 text-white font-bold py-3 px-6 rounded-xl hover:bg-teal-600 transition-all shadow-lg shadow-teal-500/20 active:scale-95;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: 0;
+    border-radius: 14px;
+    padding: 0.78rem 1.2rem;
+    font-size: 0.86rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    color: #f8fbfb;
+    background: linear-gradient(135deg, #12a69d 0%, #0d7d78 100%);
+    box-shadow: 0 12px 30px rgba(14, 118, 115, 0.24);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+
+    &:hover {
+        transform: translateY(-1px);
+        filter: brightness(1.05);
+        box-shadow: 0 16px 36px rgba(14, 118, 115, 0.3);
+    }
+
+    &:active {
+        transform: translateY(0);
+    }
+
+    &:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        transform: none;
+        filter: none;
+        box-shadow: none;
+    }
 }
 
 // Animations from Shared Styles if needed (Radial Backgrounds)
@@ -235,4 +396,88 @@ $font-body: 'Inter', sans-serif;
 .scrollbar-hidden {
     -ms-overflow-style: none;
     scrollbar-width: none;
+}
+
+@media (max-width: 1024px) {
+    .smc-course-player {
+        @apply relative;
+    }
+
+    .smc-mobile-overlay {
+        @apply block fixed inset-0 bg-black/35 z-20 border-0 m-0 p-0 cursor-pointer;
+    }
+
+    .smc-player-sidebar,
+    .smc-notes-sidebar {
+        @apply fixed bottom-0 w-[min(86vw,360px)] bg-base-100;
+        top: var(--smc-player-top-offset);
+        height: calc(100dvh - var(--smc-player-top-offset));
+        transition: transform 0.28s ease;
+    }
+
+    .smc-player-sidebar {
+        left: 0;
+        transform: translateX(-100%);
+        box-shadow: 0 20px 48px rgba(0, 0, 0, 0.2);
+
+        &.is-mobile-open {
+            transform: translateX(0);
+        }
+    }
+
+    .smc-notes-sidebar {
+        right: 0;
+        transform: translateX(100%);
+        box-shadow: 0 20px 48px rgba(0, 0, 0, 0.2);
+
+        &.is-mobile-open {
+            transform: translateX(0);
+        }
+    }
+
+    .smc-player-content {
+        width: 100%;
+
+        .smc-player-header {
+            @apply h-auto min-h-[72px] flex-col items-start gap-3 px-4 py-3;
+
+            .smc-mobile-tools {
+                @apply flex items-center gap-2;
+            }
+
+            .smc-mobile-tool-btn {
+                @apply inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wide bg-base-200 text-base-content/85 border border-base-content/10;
+                background: none;
+            }
+
+            h1 {
+                @apply text-base leading-tight;
+            }
+
+            .smc-player-title-wrap {
+                @apply items-start flex-col gap-2;
+            }
+        }
+
+        .smc-lesson-viewer {
+            @apply p-4;
+        }
+
+        .smc-text-lesson {
+            @apply p-5 text-base;
+        }
+    }
+
+    .smc-player-footer {
+        @apply px-4 py-3 justify-stretch;
+        padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+
+        .smc-btn-complete {
+            @apply w-full py-3 text-[11px];
+        }
+    }
+
+    .smc-instructor-fab {
+        display: none;
+    }
 }

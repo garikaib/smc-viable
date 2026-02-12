@@ -1,5 +1,5 @@
-import { useState, useEffect } from '@wordpress/element';
-import { ArrowLeft, Plus, Trash2, Save } from 'lucide-react';
+import { useState, useEffect, useRef } from '@wordpress/element';
+import { ArrowLeft, Plus, Trash2, Save, CheckCircle2, AlertCircle } from 'lucide-react';
 
 export default function QuizEnrollmentRules({ onBack }) {
     const [quizzes, setQuizzes] = useState([]);
@@ -8,6 +8,16 @@ export default function QuizEnrollmentRules({ onBack }) {
     const [courses, setCourses] = useState([]); // For selection
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [toast, setToast] = useState(null);
+    const toastTimerRef = useRef(null);
+
+    const showToast = (status, text) => {
+        setToast({ status, text });
+        if (toastTimerRef.current) {
+            clearTimeout(toastTimerRef.current);
+        }
+        toastTimerRef.current = setTimeout(() => setToast(null), 2800);
+    };
 
     useEffect(() => {
         const calculateData = async () => {
@@ -32,6 +42,11 @@ export default function QuizEnrollmentRules({ onBack }) {
             }
         };
         calculateData();
+        return () => {
+            if (toastTimerRef.current) {
+                clearTimeout(toastTimerRef.current);
+            }
+        };
     }, []);
 
     useEffect(() => {
@@ -64,10 +79,10 @@ export default function QuizEnrollmentRules({ onBack }) {
                 },
                 body: JSON.stringify({ rules })
             });
-            alert('Rules saved!');
+            showToast('success', 'Rules saved.');
         } catch (err) {
             console.error("Failed to save", err);
-            alert('Error saving rules.');
+            showToast('error', 'Error saving rules.');
         } finally {
             setSaving(false);
         }
@@ -231,6 +246,21 @@ export default function QuizEnrollmentRules({ onBack }) {
                     )}
                 </div>
             </div>
+
+            {toast && (
+                <div className="smc-toaster smc-instructor-toaster">
+                    <div className={`smc-toast ${toast.status}`}>
+                        <div className="toast-icon">
+                            {toast.status === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
+                        </div>
+                        <div className="toast-content">
+                            <h4>{toast.status === 'success' ? 'Success' : 'Error'}</h4>
+                            <p>{toast.text}</p>
+                        </div>
+                        <div className="toast-timer" style={{ animationDuration: '2800ms' }}></div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

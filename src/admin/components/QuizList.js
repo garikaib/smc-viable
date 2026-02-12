@@ -1,26 +1,36 @@
 import { __ } from '@wordpress/i18n';
-import { Button, Spinner, Notice } from '@wordpress/components';
-import { useState, useEffect, useRef } from '@wordpress/element';
-import { fetchQuizzes, exportQuizzes, importQuizzes, deleteQuiz } from '../utils/api';
+import { Button, Spinner, Notice, TextControl } from '@wordpress/components';
+import { useState, useEffect, useRef, useMemo } from '@wordpress/element';
+import { Copy, Check, Pencil, Trash2 } from 'lucide-react';
+import { fetchQuizzes, exportQuizzes, importQuizzes, deleteQuiz, migrateQuizzes } from '../utils/api';
 
 export default function QuizList({ onEdit, onCreate }) {
     const [quizzes, setQuizzes] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isProcessing, setIsProcessing] = useState(false);
     const [notice, setNotice] = useState(null);
+    const [search, setSearch] = useState('');
+    const [copyToast, setCopyToast] = useState('');
+    const [copiedQuizId, setCopiedQuizId] = useState(null);
     const fileInputRef = useRef(null);
 
     const loadQuizzes = () => {
         setIsLoading(true);
         fetchQuizzes()
             .then(setQuizzes)
-            .catch((err) => console.error(err))
+            .catch((err) => setNotice({ status: 'error', text: err.message }))
             .finally(() => setIsLoading(false));
     };
 
     useEffect(() => {
         loadQuizzes();
     }, []);
+
+    const filteredQuizzes = useMemo(() => {
+        const term = search.trim().toLowerCase();
+        if (!term) return quizzes;
+        return quizzes.filter((q) => (q.title?.rendered || '').toLowerCase().includes(term));
+    }, [quizzes, search]);
 
     const handleExport = async () => {
         setIsProcessing(true);
@@ -35,7 +45,7 @@ export default function QuizList({ onEdit, onCreate }) {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            setNotice({ status: 'success', text: __('Quizzes exported successfully!', 'smc-viable') });
+            setNotice({ status: 'success', text: __('Quizzes exported successfully.', 'smc-viable') });
         } catch (err) {
             setNotice({ status: 'error', text: err.message });
         } finally {
@@ -43,157 +53,179 @@ export default function QuizList({ onEdit, onCreate }) {
         }
     };
 
-    const handleImportClick = () => {
-        fileInputRef.current?.click();
-    };
+    const handleImportClick = () => fileInputRef.current?.click();
 
-    const handleFileChange = async (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
+    const handleMigrate = async () => {
         setIsProcessing(true);
         try {
-            const text = await file.text();
-            const jsonData = JSON.parse(text);
-
-            if (!jsonData.assessments || !Array.isArray(jsonData.assessments)) {
-                throw new Error(__('Invalid JSON format. Expected "assessments" array.', 'smc-viable'));
-            }
-
-            await importQuizzes(jsonData);
-            setNotice({ status: 'success', text: __('Quizzes imported successfully!', 'smc-viable') });
+            const result = await migrateQuizzes();
+            const updated = Number(result?.updated || 0);
+            const skipped = Number(result?.skipped || 0);
+            setNotice({
+                status: 'success',
+                text: __('Migration complete.', 'smc-viable') + ` Updated: ${updated}, Skipped: ${skipped}.`
+            });
             loadQuizzes();
         } catch (err) {
             setNotice({ status: 'error', text: err.message });
         } finally {
             setIsProcessing(false);
-            e.target.value = ''; // Reset file input
+        }
+    };
+
+    const handleFileChange = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setIsProcessing(true);
+        try {
+            const text = await file.text();
+            const jsonData = JSON.parse(text);
+            if (!jsonData.assessments || !Array.isArray(jsonData.assessments)) {
+                throw new Error(__('Invalid JSON format. Expected "assessments" array.', 'smc-viable'));
+            }
+            await importQuizzes(jsonData);
+            setNotice({ status: 'success', text: __('Quizzes imported successfully.', 'smc-viable') });
+            loadQuizzes();
+        } catch (err) {
+            setNotice({ status: 'error', text: err.message });
+        } finally {
+            setIsProcessing(false);
+            e.target.value = '';
+        }
+    };
+
+    const copyShortcode = async (quizId) => {
+        const textToCopy = `[smc_quiz id="${quizId}"]`;
+        try {
+            await navigator.clipboard.writeText(textToCopy);
+            setCopiedQuizId(quizId);
+            setCopyToast(__('Shortcode copied.', 'smc-viable'));
+            setTimeout(() => setCopiedQuizId(null), 1200);
+            setTimeout(() => setCopyToast(''), 2200);
+        } catch (err) {
+            setCopyToast(__('Could not copy shortcode.', 'smc-viable'));
+            setTimeout(() => setCopyToast(''), 2200);
         }
     };
 
     if (isLoading) {
-        return <Spinner />;
+        return (
+            <div className="smc-admin-loading">
+                <Spinner />
+            </div>
+        );
     }
 
     return (
-        <div className="smc-quiz-list">
+        <div className="smc-quiz-list smc-panel">
             {notice && (
                 <Notice status={notice.status} onRemove={() => setNotice(null)} isDismissible>
                     {notice.text}
                 </Notice>
             )}
 
-            <input
-                type="file"
-                accept=".json"
-                ref={fileInputRef}
-                style={{ display: 'none' }}
-                onChange={handleFileChange}
-            />
+            <input type="file" accept=".json" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
+            {copyToast && <div className="smc-copy-toast" role="status" aria-live="polite">{copyToast}</div>}
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h2>{__('All Quizzes', 'smc-viable')}</h2>
-                <div className="flex gap-2">
-                    <Button isSecondary onClick={handleExport} isBusy={isProcessing} disabled={isProcessing || quizzes.length === 0}>
+            <div className="smc-panel-head">
+                <div>
+                    <h2>{__('Assessment Library', 'smc-viable')}</h2>
+                    <p>{__('Manage all quizzes, copy shortcodes, and launch visual editing in one place.', 'smc-viable')}</p>
+                </div>
+                <div className="smc-head-actions">
+                    <Button className="smc-action-btn smc-action-btn--amber" isSecondary onClick={handleExport} isBusy={isProcessing} disabled={isProcessing || quizzes.length === 0}>
                         {__('Export JSON', 'smc-viable')}
                     </Button>
-                    <Button isSecondary onClick={handleImportClick} isBusy={isProcessing} disabled={isProcessing}>
+                    <Button className="smc-action-btn smc-action-btn--glass" isSecondary onClick={handleImportClick} isBusy={isProcessing} disabled={isProcessing}>
                         {__('Import JSON', 'smc-viable')}
                     </Button>
-                    <Button isPrimary onClick={onCreate}>{__('Create New Quiz', 'smc-viable')}</Button>
+                    <Button className="smc-action-btn smc-action-btn--amber" isSecondary onClick={handleMigrate} isBusy={isProcessing} disabled={isProcessing || quizzes.length === 0}>
+                        {__('Migrate Types', 'smc-viable')}
+                    </Button>
+                    <Button className="smc-action-btn smc-action-btn--teal" isPrimary onClick={onCreate}>
+                        {__('Create Assessment', 'smc-viable')}
+                    </Button>
                 </div>
             </div>
 
-            {quizzes.length === 0 ? (
-                <p>{__('No quizzes found. Create one or import from JSON!', 'smc-viable')}</p>
-            ) : (
-                <table className="wp-list-table widefat fixed striped">
-                    <thead>
-                        <tr>
-                            <th>{__('Title', 'smc-viable')}</th>
-                            <th>{__('Shortcode', 'smc-viable')}</th>
-                            <th>{__('Date', 'smc-viable')}</th>
-                            <th>{__('Actions', 'smc-viable')}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {quizzes.map((quiz, index) => (
-                            <tr key={quiz.id || index}>
-                                <td>
-                                    <strong>{quiz.title?.rendered || __('Untitled', 'smc-viable')}</strong>
-                                </td>
-                                <td>
-                                    <code style={{ background: '#f0f0f1', padding: '2px 5px', borderRadius: '3px' }}>
-                                        [smc_quiz id="{quiz.id}"]
-                                    </code>
-                                    <Button
-                                        isSmall
-                                        variant="secondary"
-                                        style={{ marginLeft: '10px' }}
-                                        onClick={() => {
-                                            const textToCopy = `[smc_quiz id="${quiz.id}"]`;
-                                            if (navigator.clipboard && navigator.clipboard.writeText) {
-                                                navigator.clipboard.writeText(textToCopy)
-                                                    .then(() => {
-                                                        setNotice({ status: 'success', text: __('Shortcode copied!', 'smc-viable') });
-                                                    })
-                                                    .catch(err => {
-                                                        console.error('Failed to copy: ', err);
-                                                        setNotice({ status: 'error', text: __('Failed to copy shortcode.', 'smc-viable') });
-                                                    });
-                                            } else {
-                                                // Fallback for insecure contexts or older browsers
-                                                const textArea = document.createElement("textarea");
-                                                textArea.value = textToCopy;
-                                                textArea.style.position = "fixed"; // Avoid scrolling to bottom
-                                                document.body.appendChild(textArea);
-                                                textArea.focus();
-                                                textArea.select();
-                                                try {
-                                                    document.execCommand('copy');
-                                                    setNotice({ status: 'success', text: __('Shortcode copied!', 'smc-viable') });
-                                                } catch (err) {
-                                                    console.error('Fallback copy failed: ', err);
-                                                    setNotice({ status: 'error', text: __('Failed to copy shortcode.', 'smc-viable') });
-                                                }
-                                                document.body.removeChild(textArea);
-                                            }
+            <div className="smc-library-toolbar">
+                <TextControl
+                    className="smc-search"
+                    label={__('Search assessments', 'smc-viable')}
+                    value={search}
+                    onChange={setSearch}
+                    placeholder={__('Type a title...', 'smc-viable')}
+                />
+                <div className="smc-library-stats">
+                    <span>{filteredQuizzes.length} {__('results', 'smc-viable')}</span>
+                    <span>{quizzes.length} {__('total', 'smc-viable')}</span>
+                </div>
+            </div>
 
-                                            // Clear notice after 3 seconds
-                                            setTimeout(() => setNotice(null), 3000);
-                                        }}
-                                    >
-                                        {__('Copy', 'smc-viable')}
-                                    </Button>
-                                </td>
-                                <td>{quiz.date ? new Date(quiz.date).toLocaleDateString() : '-'}</td>
-                                <td>
-                                    <Button isLink onClick={() => onEdit(quiz.id)}>{__('Edit', 'smc-viable')}</Button>
-                                    {' | '}
-                                    <Button
-                                        isLink
-                                        isDestructive
-                                        onClick={async () => {
-                                            if (!confirm(__('Are you sure you want to delete this quiz?', 'smc-viable'))) return;
-                                            setIsProcessing(true);
-                                            try {
-                                                await deleteQuiz(quiz.id);
-                                                setNotice({ status: 'success', text: __('Quiz deleted!', 'smc-viable') });
-                                                loadQuizzes();
-                                            } catch (err) {
-                                                setNotice({ status: 'error', text: err.message });
-                                            } finally {
-                                                setIsProcessing(false);
-                                            }
-                                        }}
-                                    >
-                                        {__('Delete', 'smc-viable')}
-                                    </Button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+            {filteredQuizzes.length === 0 ? (
+                <div className="smc-empty-state">
+                    <h3>{__('No assessments found', 'smc-viable')}</h3>
+                    <p>{__('Try another search term or create a new assessment.', 'smc-viable')}</p>
+                </div>
+            ) : (
+                <div className="smc-quiz-grid">
+                    {filteredQuizzes.map((quiz, index) => (
+                        <article key={quiz.id} className="smc-quiz-card" style={{ '--smc-stagger': index }}>
+                            <header>
+                                <h3>{quiz.title?.rendered || __('Untitled', 'smc-viable')}</h3>
+                                <span>{quiz.date ? new Date(quiz.date).toLocaleDateString() : '-'}</span>
+                            </header>
+
+                            <div className="smc-shortcode-row">
+                                <code>[smc_quiz id="{quiz.id}"]</code>
+                                <span
+                                    className="smc-shortcode-copy"
+                                    role="button"
+                                    tabIndex={0}
+                                    aria-label={__('Copy shortcode', 'smc-viable')}
+                                    title={__('Copy shortcode', 'smc-viable')}
+                                    onClick={() => copyShortcode(quiz.id)}
+                                    onKeyDown={(event) => {
+                                        if (event.key === 'Enter' || event.key === ' ') {
+                                            event.preventDefault();
+                                            copyShortcode(quiz.id);
+                                        }
+                                    }}
+                                >
+                                    {copiedQuizId === quiz.id ? <Check size={16} /> : <Copy size={16} />}
+                                </span>
+                            </div>
+
+                            <div className="smc-card-actions-row">
+                                <button type="button" className="smc-card-icon-btn smc-card-icon-btn--edit" onClick={() => onEdit(quiz.id)}>
+                                    <Pencil size={15} />
+                                    <span>{__('Edit Assessment', 'smc-viable')}</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    className="smc-card-icon-btn smc-card-icon-btn--delete"
+                                    onClick={async () => {
+                                        if (!confirm(__('Delete this assessment?', 'smc-viable'))) return;
+                                        setIsProcessing(true);
+                                        try {
+                                            await deleteQuiz(quiz.id);
+                                            setNotice({ status: 'success', text: __('Assessment deleted.', 'smc-viable') });
+                                            loadQuizzes();
+                                        } catch (err) {
+                                            setNotice({ status: 'error', text: err.message });
+                                        } finally {
+                                            setIsProcessing(false);
+                                        }
+                                    }}
+                                    disabled={isProcessing}
+                                >
+                                    <Trash2 size={15} />
+                                    <span>{__('Delete', 'smc-viable')}</span>
+                                </button>
+                            </div>
+                        </article>
+                    ))}
+                </div>
             )}
         </div>
     );

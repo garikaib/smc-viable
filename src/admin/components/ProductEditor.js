@@ -3,6 +3,13 @@ import { Button, TextControl, TextareaControl, SelectControl, PanelBody, Spinner
 import { __ } from '@wordpress/i18n';
 
 const apiFetch = window.wp ? window.wp.apiFetch : null;
+const planTierOptions = Array.isArray(window.smcQuizSettings?.planTiers) && window.smcQuizSettings.planTiers.length
+    ? window.smcQuizSettings.planTiers
+    : [
+        { label: 'Free Plan', value: 'free' },
+        { label: 'Basic', value: 'basic' },
+        { label: 'Standard', value: 'standard' },
+    ];
 
 export default function ProductEditor({ productId, onBack }) {
     const [loading, setLoading] = useState(productId ? true : false);
@@ -13,7 +20,7 @@ export default function ProductEditor({ productId, onBack }) {
     const [content, setContent] = useState('');
     const [price, setPrice] = useState(0);
     const [type, setType] = useState('plan');
-    const [planLevel, setPlanLevel] = useState('basic');
+    const [planLevel, setPlanLevel] = useState('free');
     const [status, setStatus] = useState('publish');
 
     useEffect(() => {
@@ -116,10 +123,7 @@ export default function ProductEditor({ productId, onBack }) {
                     <SelectControl
                         label={__('Plan Level Granted', 'smc-viable')}
                         value={planLevel}
-                        options={[
-                            { label: 'Basic', value: 'basic' },
-                            { label: 'Premium', value: 'premium' },
-                        ]}
+                        options={planTierOptions}
                         onChange={setPlanLevel}
                         help={__('Users who buy this will be upgraded to this plan level.', 'smc-viable')}
                     />

@@ -7,27 +7,122 @@ import './style.scss';
 export default function App() {
     const [view, setView] = useState('dashboard'); // 'dashboard' | 'player'
     const [activeCourseId, setActiveCourseId] = useState(null);
+    const [activeCourseSlug, setActiveCourseSlug] = useState('');
     const [courses, setCourses] = useState([]);
     const [loading, setLoading] = useState(true);
     const headerRef = useRef(null);
     const gridRef = useRef(null);
+    const initialCourseSlug = String(wpApiSettings?.currentCourseSlug || '').trim();
 
     useEffect(() => {
+        if (!initialCourseSlug) {
+            return;
+        }
+
+        setActiveCourseId(null);
+        setActiveCourseSlug(initialCourseSlug);
+        setView('player');
+    }, [initialCourseSlug]);
+
+    useEffect(() => {
+        const isAuthIssue = (status, payload) => {
+            const code = String(payload?.code || '');
+            return status === 401 || status === 403 || code === 'rest_cookie_invalid_nonce' || code === 'rest_not_logged_in';
+        };
+
+        const refreshRestNonce = async () => {
+            if (!wpApiSettings?.ajaxUrl) return null;
+
+            const response = await fetch(`${wpApiSettings.ajaxUrl}?action=smc_refresh_rest_nonce`, {
+                credentials: 'same-origin',
+            });
+            const payload = await response.json();
+            const nonce = payload?.success ? payload?.data?.nonce : null;
+
+            if (!nonce) return null;
+            wpApiSettings.nonce = nonce;
+            return nonce;
+        };
+
+        const fetchJsonWithNonceRetry = async (path) => {
+            const request = async () => {
+                const response = await fetch(`${wpApiSettings.root}${path}`, {
+                    headers: { 'X-WP-Nonce': wpApiSettings.nonce },
+                    credentials: 'same-origin',
+                });
+
+                let payload = null;
+                try {
+                    payload = await response.json();
+                } catch (err) {
+                    payload = null;
+                }
+
+                return { response, payload };
+            };
+
+            let result = await request();
+            if (result.response.ok) {
+                return result.payload;
+            }
+
+            if (isAuthIssue(result.response.status, result.payload)) {
+                const nonce = await refreshRestNonce();
+                if (nonce) {
+                    result = await request();
+                    if (result.response.ok) {
+                        return result.payload;
+                    }
+                }
+            }
+
+            throw new Error(result?.payload?.message || `Request failed with status ${result.response.status}`);
+        };
+
         const fetchDashboard = async () => {
             try {
-                const response = await fetch(`${wpApiSettings.root}smc/v1/student/dashboard`, {
-                    headers: { 'X-WP-Nonce': wpApiSettings.nonce }
-                });
-                const data = await response.json();
-                setCourses(data.courses || []);
+                const data = await fetchJsonWithNonceRetry('smc/v1/student/dashboard');
+                const studentCourses = Array.isArray(data?.courses) ? data.courses : [];
+
+                if (studentCourses.length > 0) {
+                    setCourses(studentCourses);
+                } else {
+                    // Fallback to account API enrollment payload to avoid empty portal when dashboard data lags.
+                    const accountData = await fetchJsonWithNonceRetry('smc/v1/account/profile');
+                    const enrollments = Array.isArray(accountData?.enrollments) ? accountData.enrollments : [];
+
+                    const mapped = enrollments.map((course) => {
+                        const progress = Number.isFinite(Number(course?.progress)) ? Number(course.progress) : 0;
+                        const rawStatus = String(course?.status || '').toLowerCase();
+                        let status = 'not_started';
+                        if (progress > 0) status = 'in_progress';
+                        if (rawStatus.includes('completed') || progress >= 100) status = 'completed';
+
+                        return {
+                            id: Number(course?.id) || 0,
+                            title: course?.title || 'Course',
+                            slug: course?.slug || '',
+                            thumbnail: course?.thumbnail || null,
+                            progress,
+                            status,
+                            access_source: 'Enrolled',
+                            lessons_completed: Number(course?.lessons_completed || 0),
+                            total_lessons: Number(course?.total_lessons || 0),
+                            is_locked: false,
+                        };
+                    }).filter((c) => c.id > 0);
+
+                    setCourses(mapped);
+                }
 
                 // Animation after data load
                 setTimeout(() => {
                     const tl = gsap.timeline({ defaults: { ease: "power4.out", duration: 1 } });
-                    tl.from(headerRef.current, { y: -20, opacity: 0, delay: 0.2 })
-                        .from(".smc-dashboard-intro", { y: 20, opacity: 0 }, "-=0.6")
-                        .from(".smc-course-card", { y: 30, opacity: 0, stagger: 0.1 }, "-=0.4");
-                }, 100);
+                    // Use fromTo for header to handle re-renders gracefully without needing initial CSS classes on sticky header
+                    tl.fromTo(headerRef.current, { y: -20, opacity: 0 }, { y: 0, opacity: 1, delay: 0.2 })
+                        .to(".smc-dashboard-intro", { y: 0, opacity: 1 }, "-=0.6")
+                        .to(".smc-course-card", { y: 0, opacity: 1, stagger: 0.1 }, "-=0.4");
+                }, 50);
             } catch (err) {
                 console.error("Failed to load dashboard", err);
             } finally {
@@ -43,6 +138,7 @@ export default function App() {
             return;
         }
         setActiveCourseId(course.id);
+        setActiveCourseSlug(course?.slug || '');
         setView('player');
     };
 
@@ -55,8 +151,8 @@ export default function App() {
         }
     };
 
-    if (view === 'player' && activeCourseId) {
-        return <CoursePlayer courseId={activeCourseId} onExit={() => setView('dashboard')} />;
+    if (view === 'player' && (activeCourseId || activeCourseSlug)) {
+        return <CoursePlayer courseId={activeCourseId} courseSlug={activeCourseSlug} onExit={() => setView('dashboard')} />;
     }
 
     return (
@@ -112,7 +208,7 @@ export default function App() {
                     <div className="smc-loading">Curating your workspace...</div>
                 ) : (
                     <>
-                        <div className="smc-dashboard-intro mb-12">
+                        <div className="smc-dashboard-intro mb-12 opacity-0 translate-y-4">
                             <span className="smc-premium-badge">CONTINUE JOURNEY</span>
                             <h2 className="smc-premium-heading text-4xl mt-4">Active Modules</h2>
                             <p className="text-base-content/60 mt-2 max-w-xl">Deepen your expertise with our boutique African business science modules.</p>
@@ -120,9 +216,32 @@ export default function App() {
 
                         <div className="smc-course-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" ref={gridRef}>
                             {courses.length === 0 ? (
-                                <div className="col-span-full smc-glass-card p-12 text-center">
-                                    <p className="text-smc-text-muted">You are not enrolled in any courses yet.</p>
-                                    <a href="/shop" className="smc-btn-primary mt-6 inline-block">Explore Modules</a>
+                                <div className="col-span-full smc-glass-card p-20 text-center flex flex-col items-center justify-center border border-white/5 relative overflow-hidden group">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-teal-500/5 to-transparent opacity-50"></div>
+
+                                    <div className="relative mb-8 transform group-hover:scale-110 transition-transform duration-700">
+                                        <div className="w-24 h-24 rounded-3xl bg-teal-500/10 flex items-center justify-center text-teal-500 shadow-2xl border border-teal-500/20">
+                                            <TrendingUp size={48} />
+                                        </div>
+                                        <div className="absolute -bottom-2 -right-2 w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-500 backdrop-blur-md">
+                                            <ArrowRight size={20} />
+                                        </div>
+                                    </div>
+
+                                    <h3 className="smc-premium-heading text-3xl mb-4 relative">Begin Your Evolution</h3>
+                                    <p className="text-base-content/50 max-w-md mx-auto mb-10 leading-relaxed relative">
+                                        Your learning hub is ready for expansion. Discover boutique African business science modules tailored to your journey in our shop.
+                                    </p>
+
+                                    <div className="flex flex-col sm:flex-row gap-4 relative">
+                                        <a href="/shop" className="smc-btn-primary px-10 py-5 flex items-center gap-3 shadow-xl shadow-teal-500/20">
+                                            Explore Shop <ArrowRight size={18} />
+                                        </a>
+                                    </div>
+
+                                    <div className="mt-12 text-[10px] font-black uppercase tracking-[0.3em] text-base-content/20 relative">
+                                        Premium Learning Experience
+                                    </div>
                                 </div>
                             ) : (
                                 courses.map(course => {
@@ -131,13 +250,13 @@ export default function App() {
                                     const isLocked = action.isLocked;
 
                                     return (
-                                        <div key={course.id} className={`smc-course-card smc-glass-card group overflow-hidden flex flex-col h-full ${isLocked ? 'grayscale opacity-80' : ''}`}>
+                                        <div key={course.id} className={`smc-course-card smc-glass-card group overflow-hidden flex flex-col h-full opacity-0 translate-y-8 ${isLocked ? 'grayscale opacity-80' : ''}`}>
                                             <div className="smc-course-thumb relative h-48 overflow-hidden flex-shrink-0">
                                                 {course.thumbnail ? (
                                                     <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                                                 ) : (
-                                                    <div className="w-full h-full bg-smc-teal/5 flex items-center justify-center">
-                                                        <BookOpen size={48} className="text-smc-teal opacity-20" />
+                                                    <div className="w-full h-full bg-teal-500/5 flex items-center justify-center">
+                                                        <BookOpen size={48} className="text-teal-500 opacity-20" />
                                                     </div>
                                                 )}
                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-6">
@@ -177,7 +296,7 @@ export default function App() {
 
                                                 <button
                                                     onClick={() => handleOpenCourse(course)}
-                                                    className={`w-full py-4 border border-smc-teal/20 rounded-xl text-[11px] font-black tracking-widest uppercase hover:bg-smc-teal hover:text-white transition-all flex items-center justify-center gap-2 ${isLocked ? 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-600' : ''}`}
+                                                    className={`w-full py-4 border border-teal-500/20 rounded-xl text-[11px] font-black tracking-widest uppercase hover:bg-teal-500 hover:text-white transition-all flex items-center justify-center gap-2 ${isLocked ? 'bg-base-200 text-base-content/40 border-transparent hover:bg-base-300 hover:text-base-content/60' : ''}`}
                                                 >
                                                     {action.text} <ActionIcon size={14} />
                                                 </button>

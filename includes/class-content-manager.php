@@ -36,7 +36,7 @@ class Content_Manager {
     public static function register_content_meta(): void {
         // Restrict by Plan Level
         register_post_meta( 'post', '_smc_plan_level', [
-            'type'         => 'string', // 'free', 'basic', 'premium'
+            'type'         => 'string', // 'free', 'basic', 'standard'
             'single'       => true,
             'show_in_rest' => true,
         ] );
@@ -111,7 +111,7 @@ class Content_Manager {
         if ( $plan_level && $plan_level !== 'free' && $plan_level !== 'public' ) {
             if ( ! $user_id ) return false; // Must be logged in
             
-            $user_plan = get_user_meta( $user_id, '_smc_user_plan', true ) ?: 'free';
+            $user_plan = Enrollment_Manager::resolve_user_plan( $user_id );
             if ( ! self::compare_plan_levels( $user_plan, $plan_level ) ) {
                 return false;
             }
@@ -156,9 +156,6 @@ class Content_Manager {
      * We'll keep local for now to avoid hard dependency loop if Enrollment Manager is missing, though we use it above.
      */
     private static function compare_plan_levels( string $user_level, string $course_level ): bool {
-        $levels = [ 'free' => 0, 'basic' => 1, 'premium' => 2 ];
-        $u_val = $levels[ $user_level ] ?? 0;
-        $c_val = $levels[ $course_level ] ?? 0;
-        return $u_val >= $c_val;
+        return Plan_Tiers::compare( $user_level, $course_level );
     }
 }

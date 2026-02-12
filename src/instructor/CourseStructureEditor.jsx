@@ -1,16 +1,41 @@
-import { useState, useEffect } from '@wordpress/element';
-import { ArrowLeft, Plus, GripVertical, Trash2, Edit, X, Search, ChevronUp, ChevronDown, ExternalLink } from 'lucide-react';
+import { useState, useEffect, useRef } from '@wordpress/element';
+import { ArrowLeft, Plus, GripVertical, Trash2, Edit, X, Search, ChevronUp, ChevronDown, CheckCircle2, AlertCircle, Save, Video } from 'lucide-react';
 
 export default function CourseStructureEditor({ course, onBack }) {
     const [sections, setSections] = useState([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [courseTitle, setCourseTitle] = useState(course.title || '');
+    const [initialCourseTitle, setInitialCourseTitle] = useState(course.title || '');
 
     // Lesson Search State
     const [isSearching, setIsSearching] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [activeSectionIndex, setActiveSectionIndex] = useState(null);
+    const [toast, setToast] = useState(null);
+
+    // Create lesson state
+    const [isCreatingLesson, setIsCreatingLesson] = useState(false);
+    const [newLessonTitle, setNewLessonTitle] = useState('');
+    const [newLessonType, setNewLessonType] = useState('video');
+    const [newLessonVideo, setNewLessonVideo] = useState('');
+    const [newLessonCaption, setNewLessonCaption] = useState('');
+    const [newLessonDuration, setNewLessonDuration] = useState('');
+
+    // Video lesson inline editor
+    const [editingVideoLesson, setEditingVideoLesson] = useState(null);
+    const [videoEditorSaving, setVideoEditorSaving] = useState(false);
+
+    const toastTimerRef = useRef(null);
+
+    const showToast = (status, text) => {
+        setToast({ status, text });
+        if (toastTimerRef.current) {
+            clearTimeout(toastTimerRef.current);
+        }
+        toastTimerRef.current = setTimeout(() => setToast(null), 2800);
+    };
 
     useEffect(() => {
         const fetchStructure = async () => {
@@ -20,23 +45,54 @@ export default function CourseStructureEditor({ course, onBack }) {
                 });
                 const data = await response.json();
                 setSections(data.sections || []);
+                const resolvedTitle = data.title || course.title || '';
+                setCourseTitle(resolvedTitle);
+                setInitialCourseTitle(resolvedTitle);
             } catch (err) {
-                console.error("Failed to fetch structure", err);
+                console.error('Failed to fetch structure', err);
             } finally {
                 setLoading(false);
             }
         };
 
         fetchStructure();
-    }, [course.id]);
+        return () => {
+            if (toastTimerRef.current) {
+                clearTimeout(toastTimerRef.current);
+            }
+        };
+    }, [course.id, course.title]);
 
     const handleSave = async () => {
+        const trimmedTitle = String(courseTitle || '').trim();
+        if (!trimmedTitle) {
+            showToast('error', 'Course title cannot be empty.');
+            return;
+        }
+
         setSaving(true);
         try {
-            // Transform sections back to ID-only lessons for storage
-            const dataToSave = sections.map(s => ({
-                title: s.title,
-                lessons: s.lessons.map(l => l.id)
+            let titleSaved = true;
+            if (trimmedTitle !== String(initialCourseTitle || '').trim()) {
+                const titleResponse = await fetch(`${wpApiSettings.root}smc/v1/instructor/courses/${course.id}/title`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-WP-Nonce': wpApiSettings.nonce
+                    },
+                    body: JSON.stringify({ title: trimmedTitle })
+                });
+
+                if (titleResponse.ok) {
+                    setInitialCourseTitle(trimmedTitle);
+                } else {
+                    titleSaved = false;
+                }
+            }
+
+            const dataToSave = sections.map((section) => ({
+                title: section.title,
+                lessons: (section.lessons || []).map((lesson) => lesson.id)
             }));
 
             const response = await fetch(`${wpApiSettings.root}smc/v1/instructor/courses/${course.id}/structure`, {
@@ -49,10 +105,13 @@ export default function CourseStructureEditor({ course, onBack }) {
             });
 
             if (response.ok) {
-                alert('Saved successfully!');
+                showToast(titleSaved ? 'success' : 'error', titleSaved ? 'Saved successfully.' : 'Structure saved, but title could not be updated.');
+            } else {
+                showToast('error', 'Save failed. Please try again.');
             }
         } catch (err) {
-            console.error("Failed to save structure", err);
+            console.error('Failed to save structure', err);
+            showToast('error', 'Save failed. Please try again.');
         } finally {
             setSaving(false);
         }
@@ -79,29 +138,38 @@ export default function CourseStructureEditor({ course, onBack }) {
 
     const searchLessons = async (query) => {
         setSearchQuery(query);
-        if (query.length < 2) return;
+        if (query.length < 2) {
+            setSearchResults([]);
+            return;
+        }
 
         try {
             const response = await fetch(`${wpApiSettings.root}smc/v1/instructor/lessons/search?q=${encodeURIComponent(query)}`, {
                 headers: { 'X-WP-Nonce': wpApiSettings.nonce }
             });
             const data = await response.json();
-            setSearchResults(data);
+            setSearchResults(Array.isArray(data) ? data : []);
         } catch (err) {
-            console.error("Search failed", err);
+            console.error('Search failed', err);
         }
     };
 
     const attachLesson = (lesson) => {
         const newSections = [...sections];
-        // Check if already in section? (Optional, but good UX)
-        // newSections[activeSectionIndex].lessons.push(lesson);
 
-        // For visual consistency, ensure we have the properties needed
         newSections[activeSectionIndex].lessons.push({
             id: lesson.id,
             title: lesson.title,
-            type: lesson.type
+            type: lesson.type,
+            duration: Number(lesson.duration || 0),
+            video_url: lesson.video_url || '',
+            video_caption: lesson.video_caption || '',
+            embed_settings: lesson.embed_settings || {
+                autoplay: false,
+                loop: false,
+                muted: false,
+                controls: true,
+            }
         });
 
         setSections(newSections);
@@ -109,8 +177,10 @@ export default function CourseStructureEditor({ course, onBack }) {
     };
 
     const createNewLesson = async () => {
-        const title = prompt("Enter new lesson title:");
-        if (!title) return;
+        const title = newLessonTitle.trim();
+        if (!title) {
+            return;
+        }
 
         try {
             const response = await fetch(`${wpApiSettings.root}smc/v1/instructor/lessons`, {
@@ -119,15 +189,36 @@ export default function CourseStructureEditor({ course, onBack }) {
                     'Content-Type': 'application/json',
                     'X-WP-Nonce': wpApiSettings.nonce
                 },
-                body: JSON.stringify({ title, type: 'video' }) // Default type
+                body: JSON.stringify({
+                    title,
+                    type: newLessonType,
+                    video_url: newLessonVideo,
+                    video_caption: newLessonCaption,
+                    duration: newLessonDuration,
+                    embed_settings: {
+                        autoplay: false,
+                        loop: false,
+                        muted: false,
+                        controls: true,
+                    }
+                })
             });
 
             if (response.ok) {
                 const newLesson = await response.json();
                 attachLesson(newLesson);
+                setIsCreatingLesson(false);
+                setNewLessonTitle('');
+                setNewLessonVideo('');
+                setNewLessonCaption('');
+                setNewLessonDuration('');
+                showToast('success', 'Lesson created and attached.');
+            } else {
+                showToast('error', 'Could not create lesson.');
             }
         } catch (err) {
-            console.error("Failed to create lesson", err);
+            console.error('Failed to create lesson', err);
+            showToast('error', 'Could not create lesson.');
         }
     };
 
@@ -150,16 +241,95 @@ export default function CourseStructureEditor({ course, onBack }) {
         setSections(newSections);
     };
 
-    if (loading) return <div>Loading structure...</div>;
+    const openVideoEditor = (lesson) => {
+        setEditingVideoLesson({
+            id: lesson.id,
+            title: lesson.title || '',
+            video_url: lesson.video_url || '',
+            video_caption: lesson.video_caption || '',
+            duration: lesson.duration || '',
+            embed_settings: {
+                autoplay: Boolean(lesson?.embed_settings?.autoplay),
+                loop: Boolean(lesson?.embed_settings?.loop),
+                muted: Boolean(lesson?.embed_settings?.muted),
+                controls: lesson?.embed_settings?.controls !== false,
+            }
+        });
+    };
+
+    const saveVideoEditor = async () => {
+        if (!editingVideoLesson) {
+            return;
+        }
+
+        setVideoEditorSaving(true);
+        try {
+            const response = await fetch(`${wpApiSettings.root}smc/v1/instructor/lessons/${editingVideoLesson.id}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-WP-Nonce': wpApiSettings.nonce
+                },
+                body: JSON.stringify({
+                    title: editingVideoLesson.title,
+                    type: 'video',
+                    video_url: editingVideoLesson.video_url,
+                    video_caption: editingVideoLesson.video_caption,
+                    duration: editingVideoLesson.duration,
+                    embed_settings: editingVideoLesson.embed_settings,
+                })
+            });
+
+            if (!response.ok) {
+                showToast('error', 'Could not save video settings.');
+                return;
+            }
+
+            setSections((prevSections) => prevSections.map((section) => ({
+                ...section,
+                lessons: (section.lessons || []).map((lesson) => lesson.id === editingVideoLesson.id
+                    ? {
+                        ...lesson,
+                        title: editingVideoLesson.title,
+                        type: 'video',
+                        video_url: editingVideoLesson.video_url,
+                        video_caption: editingVideoLesson.video_caption,
+                        duration: Number(editingVideoLesson.duration || 0),
+                        embed_settings: { ...editingVideoLesson.embed_settings },
+                    }
+                    : lesson),
+            })));
+
+            setEditingVideoLesson(null);
+            showToast('success', 'Video settings saved.');
+        } catch (err) {
+            console.error('Failed to save video settings', err);
+            showToast('error', 'Could not save video settings.');
+        } finally {
+            setVideoEditorSaving(false);
+        }
+    };
+
+    if (loading) {
+        return <div>Loading structure...</div>;
+    }
 
     return (
         <div className="smc-structure-editor relative">
             <header className="smc-editor-header flex justify-between items-center mb-6">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 flex-1">
                     <button onClick={onBack} className="smc-btn-secondary">
                         <ArrowLeft size={18} className="mr-2" /> Back
                     </button>
-                    <h2 className="text-xl font-bold text-base-content">Editing: {course.title}</h2>
+                    <div className="smc-course-title-editor flex items-center gap-2 flex-1 max-w-3xl">
+                        <input
+                            type="text"
+                            className="smc-course-title-input"
+                            value={courseTitle}
+                            onChange={(e) => setCourseTitle(e.target.value)}
+                            aria-label="Course title"
+                        />
+                    </div>
                 </div>
                 <button
                     className="smc-btn-primary"
@@ -215,18 +385,28 @@ export default function CourseStructureEditor({ course, onBack }) {
                                         <span className="text-base-content font-medium">{lesson.title}</span>
                                     </div>
 
-                                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <a
-                                            href={`/wp-admin/post.php?post=${lesson.id}&action=edit`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="p-1 px-2 bg-blue-900 text-blue-200 rounded text-xs flex items-center hover:bg-blue-800"
-                                            title="Edit Content in Gutenberg"
-                                        >
-                                            <Edit size={12} className="mr-1" /> Edit
-                                        </a>
+                                    <div className="smc-lesson-actions opacity-0 group-hover:opacity-100 transition-opacity">
+                                        {lesson.type === 'video' ? (
+                                            <button
+                                                className="smc-lesson-action-btn smc-lesson-action-edit"
+                                                title="Edit video settings"
+                                                onClick={() => openVideoEditor(lesson)}
+                                            >
+                                                <Video size={12} className="mr-1" /> Video Settings
+                                            </button>
+                                        ) : (
+                                            <a
+                                                href={`/wp-admin/post.php?post=${lesson.id}&action=edit`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="smc-lesson-action-btn smc-lesson-action-edit"
+                                                title="Edit content in Gutenberg"
+                                            >
+                                                <Edit size={12} className="mr-1" /> Edit
+                                            </a>
+                                        )}
                                         <button
-                                            className="text-red-400 hover:text-red-300 p-1"
+                                            className="smc-lesson-action-btn smc-lesson-action-delete"
                                             title="Remove Lesson"
                                             onClick={() => removeLesson(sIndex, lIndex)}
                                         >
@@ -254,7 +434,6 @@ export default function CourseStructureEditor({ course, onBack }) {
                 </button>
             </div>
 
-            {/* Lesson Search Modal */}
             {isSearching && (
                 <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
                     <div className="bg-base-100 w-full max-w-lg rounded-2xl border border-base-content/10 shadow-2xl overflow-hidden backdrop-blur-xl">
@@ -279,7 +458,7 @@ export default function CourseStructureEditor({ course, onBack }) {
                             </div>
 
                             <div className="max-h-60 overflow-y-auto space-y-2 mb-4">
-                                {searchResults.map(result => (
+                                {searchResults.map((result) => (
                                     <div
                                         key={result.id}
                                         className="p-3 bg-base-200 hover:bg-teal-500/10 hover:text-teal-500 cursor-pointer rounded-lg flex justify-between items-center transition-all"
@@ -295,21 +474,244 @@ export default function CourseStructureEditor({ course, onBack }) {
                             </div>
 
                             <div className="pt-4 border-t border-base-content/5">
-                                <button
-                                    className="w-full py-2 bg-primary text-white rounded font-bold hover:brightness-110"
-                                    onClick={createNewLesson}
-                                >
-                                    <Plus size={16} className="inline mr-1" /> Create New Lesson
-                                </button>
+                                {!isCreatingLesson ? (
+                                    <button
+                                        className="w-full py-2 bg-primary text-white rounded font-bold hover:brightness-110"
+                                        onClick={() => {
+                                            setIsCreatingLesson(true);
+                                            setNewLessonTitle('');
+                                            setNewLessonVideo('');
+                                            setNewLessonCaption('');
+                                            setNewLessonDuration('');
+                                        }}
+                                    >
+                                        <Plus size={16} className="inline mr-1" /> Create New Lesson
+                                    </button>
+                                ) : (
+                                    <div className="space-y-3">
+                                        <input
+                                            type="text"
+                                            className="w-full bg-base-200 border border-base-content/10 rounded-lg py-2.5 px-3 text-base-content focus:outline-none focus:border-teal-500 transition-all font-medium"
+                                            placeholder="Lesson title"
+                                            value={newLessonTitle}
+                                            onChange={(e) => setNewLessonTitle(e.target.value)}
+                                            autoFocus
+                                        />
+
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <select
+                                                className="bg-base-200 border border-base-content/10 rounded-lg py-2.5 px-3 text-base-content focus:outline-none focus:border-teal-500"
+                                                value={newLessonType}
+                                                onChange={(e) => setNewLessonType(e.target.value)}
+                                            >
+                                                <option value="video">Video Lesson</option>
+                                                <option value="text">Text / Article</option>
+                                            </select>
+                                            <input
+                                                type="number"
+                                                className="bg-base-200 border border-base-content/10 rounded-lg py-2.5 px-3 text-base-content focus:outline-none focus:border-teal-500"
+                                                placeholder="Duration (min)"
+                                                value={newLessonDuration}
+                                                onChange={(e) => setNewLessonDuration(e.target.value)}
+                                            />
+                                        </div>
+
+                                        {newLessonType === 'video' && (
+                                            <>
+                                                <input
+                                                    type="text"
+                                                    className="w-full bg-base-200 border border-base-content/10 rounded-lg py-2.5 px-3 text-base-content focus:outline-none focus:border-teal-500 transition-all font-medium"
+                                                    placeholder="Video URL (YouTube/Vimeo)"
+                                                    value={newLessonVideo}
+                                                    onChange={(e) => setNewLessonVideo(e.target.value)}
+                                                />
+                                                <input
+                                                    type="text"
+                                                    className="w-full bg-base-200 border border-base-content/10 rounded-lg py-2.5 px-3 text-base-content focus:outline-none focus:border-teal-500 transition-all font-medium"
+                                                    placeholder="Fallback caption (optional)"
+                                                    value={newLessonCaption}
+                                                    onChange={(e) => setNewLessonCaption(e.target.value)}
+                                                />
+                                            </>
+                                        )}
+
+                                        <div className="flex gap-2">
+                                            <button
+                                                className="flex-1 py-2 bg-base-content/10 text-base-content rounded font-semibold hover:bg-base-content/15"
+                                                onClick={() => {
+                                                    setIsCreatingLesson(false);
+                                                    setNewLessonTitle('');
+                                                    setNewLessonVideo('');
+                                                    setNewLessonCaption('');
+                                                    setNewLessonDuration('');
+                                                }}
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                className="flex-1 py-2 bg-primary text-white rounded font-bold hover:brightness-110 disabled:opacity-60"
+                                                onClick={createNewLesson}
+                                                disabled={!newLessonTitle.trim()}
+                                            >
+                                                Create
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
                 </div>
             )}
+
+            {editingVideoLesson && (
+                <div className="smc-modal-overlay smc-course-modal-overlay">
+                    <div className="smc-modal smc-course-modal">
+                        <div className="flex justify-between items-start gap-4 mb-3">
+                            <div>
+                                <h3>Video Lesson Settings</h3>
+                                <p className="smc-course-modal-subtitle">Edit URL, caption and embed behavior for this video lesson.</p>
+                            </div>
+                            <button
+                                type="button"
+                                className="smc-invite-close-btn"
+                                onClick={() => setEditingVideoLesson(null)}
+                                aria-label="Close"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="space-y-3">
+                            <div className="smc-form-group">
+                                <label>Lesson Title</label>
+                                <input
+                                    className="smc-invite-input"
+                                    type="text"
+                                    value={editingVideoLesson.title}
+                                    onChange={(e) => setEditingVideoLesson({ ...editingVideoLesson, title: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="smc-form-group">
+                                <label>Video URL</label>
+                                <input
+                                    className="smc-invite-input"
+                                    type="text"
+                                    placeholder="https://youtube.com/watch?v=..."
+                                    value={editingVideoLesson.video_url}
+                                    onChange={(e) => setEditingVideoLesson({ ...editingVideoLesson, video_url: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="smc-form-group">
+                                <label>Fallback Caption</label>
+                                <input
+                                    className="smc-invite-input"
+                                    type="text"
+                                    placeholder="Shown below video in player"
+                                    value={editingVideoLesson.video_caption}
+                                    onChange={(e) => setEditingVideoLesson({ ...editingVideoLesson, video_caption: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="smc-form-group">
+                                <label>Duration (minutes)</label>
+                                <input
+                                    className="smc-invite-input"
+                                    type="number"
+                                    min="0"
+                                    value={editingVideoLesson.duration}
+                                    onChange={(e) => setEditingVideoLesson({ ...editingVideoLesson, duration: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2 smc-video-setting-grid">
+                                <label className="smc-video-setting-item">
+                                    <input
+                                        type="checkbox"
+                                        checked={editingVideoLesson.embed_settings.autoplay}
+                                        onChange={(e) => setEditingVideoLesson({
+                                            ...editingVideoLesson,
+                                            embed_settings: {
+                                                ...editingVideoLesson.embed_settings,
+                                                autoplay: e.target.checked,
+                                            }
+                                        })}
+                                    />
+                                    <span>Autoplay</span>
+                                </label>
+                                <label className="smc-video-setting-item">
+                                    <input
+                                        type="checkbox"
+                                        checked={editingVideoLesson.embed_settings.loop}
+                                        onChange={(e) => setEditingVideoLesson({
+                                            ...editingVideoLesson,
+                                            embed_settings: {
+                                                ...editingVideoLesson.embed_settings,
+                                                loop: e.target.checked,
+                                            }
+                                        })}
+                                    />
+                                    <span>Loop</span>
+                                </label>
+                                <label className="smc-video-setting-item">
+                                    <input
+                                        type="checkbox"
+                                        checked={editingVideoLesson.embed_settings.muted}
+                                        onChange={(e) => setEditingVideoLesson({
+                                            ...editingVideoLesson,
+                                            embed_settings: {
+                                                ...editingVideoLesson.embed_settings,
+                                                muted: e.target.checked,
+                                            }
+                                        })}
+                                    />
+                                    <span>Muted</span>
+                                </label>
+                                <label className="smc-video-setting-item">
+                                    <input
+                                        type="checkbox"
+                                        checked={editingVideoLesson.embed_settings.controls}
+                                        onChange={(e) => setEditingVideoLesson({
+                                            ...editingVideoLesson,
+                                            embed_settings: {
+                                                ...editingVideoLesson.embed_settings,
+                                                controls: e.target.checked,
+                                            }
+                                        })}
+                                    />
+                                    <span>Show Controls</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div className="smc-modal-actions">
+                            <button type="button" className="smc-btn-secondary" onClick={() => setEditingVideoLesson(null)}>
+                                Cancel
+                            </button>
+                            <button type="button" className="smc-btn-primary" disabled={videoEditorSaving} onClick={saveVideoEditor}>
+                                <Save size={16} className="mr-1" /> {videoEditorSaving ? 'Saving...' : 'Save Video'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {toast && (
+                <div className="smc-toaster smc-instructor-toaster">
+                    <div className={`smc-toast ${toast.status}`}>
+                        <div className="toast-icon">
+                            {toast.status === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
+                        </div>
+                        <div className="toast-content">
+                            <h4>{toast.status === 'success' ? 'Success' : 'Error'}</h4>
+                            <p>{toast.text}</p>
+                        </div>
+                        <div className="toast-timer" style={{ animationDuration: '2800ms' }}></div>
+                    </div>
+                </div>
+            )}
         </div>
     );
-}
-
-function Save({ size, className }) {
-    return <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>;
 }

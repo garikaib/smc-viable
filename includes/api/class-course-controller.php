@@ -48,14 +48,52 @@ class Course_Controller extends WP_REST_Controller {
 				],
 			]
 		);
+
+		// GET /smc/v1/courses/slug/{slug}/structure
+		register_rest_route(
+			$this->namespace,
+			'/' . $this->rest_base . '/slug/(?P<slug>[a-z0-9-]+)/structure',
+			[
+				[
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => [ $this, 'get_structure' ],
+					'permission_callback' => [ $this, 'permissions_check' ],
+				],
+			]
+		);
+
+		// GET /smc/v1/courses/{id}/instructor-profile
+		register_rest_route(
+			$this->namespace,
+			'/' . $this->rest_base . '/(?P<id>\d+)/instructor-profile',
+			[
+				[
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => [ $this, 'get_instructor_profile' ],
+					'permission_callback' => [ $this, 'permissions_check' ],
+				],
+			]
+		);
+
+		// GET /smc/v1/courses/slug/{slug}/instructor-profile
+		register_rest_route(
+			$this->namespace,
+			'/' . $this->rest_base . '/slug/(?P<slug>[a-z0-9-]+)/instructor-profile',
+			[
+				[
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => [ $this, 'get_instructor_profile' ],
+					'permission_callback' => [ $this, 'permissions_check' ],
+				],
+			]
+		);
 	}
 
 	/**
 	 * Check permissions.
 	 */
 	public function permissions_check( $request ) {
-        $id = (int) $request->get_param( 'id' );
-        $post = get_post( $id );
+        $post = $this->resolve_course_post( $request );
         
         if ( ! $post || 'smc_training' !== $post->post_type ) {
             return new WP_Error( 'rest_course_invalid', 'Invalid course ID.', [ 'status' => 404 ] );
@@ -65,8 +103,13 @@ class Course_Controller extends WP_REST_Controller {
             return new WP_Error( 'rest_forbidden', 'You must be logged in.', [ 'status' => 401 ] );
         }
 
-        // Use Enrollment Manager to gate access
-        if ( ! Enrollment_Manager::can_access_course( get_current_user_id(), $id ) ) {
+        // Allow instructors/editors to view structure even if not enrolled
+        if ( current_user_can( 'edit_posts' ) ) {
+            return true;
+        }
+
+        // Use Enrollment Manager to gate access for students
+        if ( ! Enrollment_Manager::can_access_course( get_current_user_id(), (int) $post->ID ) ) {
              return new WP_Error( 'rest_forbidden', 'You do not have access to this course.', [ 'status' => 403 ] );
         }
         
@@ -77,8 +120,12 @@ class Course_Controller extends WP_REST_Controller {
 	 * Get Course Structure.
 	 */
 	public function get_structure( $request ) {
-		$id = (int) $request->get_param( 'id' );
-        $course = get_post( $id );
+        $course = $this->resolve_course_post( $request );
+        if ( ! $course || 'smc_training' !== $course->post_type ) {
+            return new WP_Error( 'rest_course_invalid', 'Invalid course ID.', [ 'status' => 404 ] );
+        }
+
+		$id = (int) $course->ID;
         $user_id = get_current_user_id();
         
         $sections = get_post_meta( $id, '_course_sections', true ) ?: [];
@@ -97,10 +144,6 @@ class Course_Controller extends WP_REST_Controller {
         if ( $enrollment && 'quiz' === $enrollment->source && $enrollment->source_meta ) {
             $meta = json_decode( $enrollment->source_meta, true );
             $recommended_sections = $meta['recommended_sections'] ?? [];
-            // Assuming recommended_sections is array of section indices or titles?
-            // Existing plan says: "Store section titles in addition to indices"
-            // For now, let's assume indices are reliable enough or we match by title if possible.
-            // Let's pass the raw structure to frontend to decide.
         }
         
         // Hydrate lessons content
@@ -113,22 +156,6 @@ class Course_Controller extends WP_REST_Controller {
                 'is_recommended' => false,
             ];
 
-            // Check if recommended
-            // If recommended_sections contains indices like [ { section_indices: [0, 2] } ] ? 
-            // Wait, standard structure in rules JSON was: "recommended_sections": [ { "course_id": 12, "section_indices": [2, 3] } ]
-            // So we need to parse that.
-            // But here we are inside a specific course. So we just need the list of indices for THIS course.
-            // In process_quiz_enrollment, we stored: `'recommended_sections' => $rule['recommended_sections'] ?? []`
-            // So source_meta contains the full array of recommendations across potentially multiple courses?
-            // Actually, in `process_quiz_enrollment`, we filter `recommended_sections` for the specific course?
-            // "For each range: select courses... For each course in range: optionally select recommended sections"
-            // The JSON structure:
-            // "recommended_sections": [ { "course_id": 15, "section_indices": [0, 1] } ]
-            // So we need to find the entry for $id. (Wait, course_id inside `recommended_sections` might be redundant if the rule maps to courses differently).
-            // Let's assume the rules JSON structure is:
-            // "recommended_sections": [ { "course_id": 123, "indices": [0,1] } ]
-            // Then we filter here.
-            
             if ( ! empty( $recommended_sections ) ) {
                 foreach ( $recommended_sections as $rec ) {
                      // Check if this recommendation block applies to current course
@@ -148,6 +175,16 @@ class Course_Controller extends WP_REST_Controller {
                     $type = get_post_meta( $lesson->ID, '_lesson_type', true ) ?: 'text';
                     $duration = get_post_meta( $lesson->ID, '_lesson_duration', true ) ?: 0;
                     $video_url = get_post_meta( $lesson->ID, '_lesson_video_url', true ) ?: '';
+                    $video_caption = get_post_meta( $lesson->ID, '_lesson_video_caption', true ) ?: '';
+                    $embed_settings = get_post_meta( $lesson->ID, '_lesson_embed_settings', true );
+                    if ( ! is_array( $embed_settings ) ) {
+                        $embed_settings = [
+                            'autoplay' => false,
+                            'loop'     => false,
+                            'muted'    => false,
+                            'controls' => true,
+                        ];
+                    }
                     
                     $status = $lesson_status_map[ $lesson->ID ] ?? 'not_started';
 
@@ -158,8 +195,15 @@ class Course_Controller extends WP_REST_Controller {
                         'duration' => (int) $duration,
                         'status' => $status, 
                         'is_locked' => false, // Could implement sequential unlock here
-                        'content' => $lesson->post_content,
+                        'content' => apply_filters( 'the_content', $lesson->post_content ),
                         'video_url' => $video_url,
+                        'video_caption' => sanitize_text_field( (string) $video_caption ),
+                        'embed_settings' => [
+                            'autoplay' => (bool) ( $embed_settings['autoplay'] ?? false ),
+                            'loop'     => (bool) ( $embed_settings['loop'] ?? false ),
+                            'muted'    => (bool) ( $embed_settings['muted'] ?? false ),
+                            'controls' => (bool) ( $embed_settings['controls'] ?? true ),
+                        ],
                     ];
                 }
             }
@@ -171,6 +215,119 @@ class Course_Controller extends WP_REST_Controller {
             'title' => $course->post_title,
             'sections' => $hydrated_sections,
             'progress' => $progress_data['overall_percent'],
+            'instructor_profile' => $this->build_instructor_profile_payload( (int) $course->post_author ),
         ] );
+	}
+
+	/**
+	 * Get course instructor profile by course lookup.
+	 */
+	public function get_instructor_profile( $request ) {
+		$course = $this->resolve_course_post( $request );
+		if ( ! $course || 'smc_training' !== $course->post_type ) {
+			return new WP_Error( 'rest_course_invalid', 'Invalid course ID.', [ 'status' => 404 ] );
+		}
+
+		return rest_ensure_response( $this->build_instructor_profile_payload( (int) $course->post_author ) );
+	}
+
+	/**
+	 * Build normalized instructor profile payload from user meta.
+	 */
+	private function build_instructor_profile_payload( int $instructor_id ): array {
+		$user = get_userdata( $instructor_id );
+		if ( ! ( $user instanceof \WP_User ) ) {
+			return [
+				'id'           => 0,
+				'name'         => '',
+				'avatar'       => '',
+				'intro'        => '',
+				'bio'          => '',
+				'experience'   => '',
+				'skills'       => [],
+				'social_links' => [],
+			];
+		}
+
+		$raw = get_user_meta( $instructor_id, '_smc_instructor_profile', true );
+		$data = is_array( $raw ) ? $raw : [];
+		$skills = [];
+		if ( isset( $data['skills'] ) ) {
+			if ( is_string( $data['skills'] ) ) {
+				$data['skills'] = preg_split( '/[\n,]+/', $data['skills'] );
+			}
+			if ( is_array( $data['skills'] ) ) {
+				foreach ( $data['skills'] as $skill ) {
+					$label = sanitize_text_field( (string) $skill );
+					if ( '' !== $label ) {
+						$skills[] = $label;
+					}
+				}
+			}
+		}
+
+		$social_keys = [ 'website', 'linkedin', 'twitter', 'facebook', 'instagram', 'youtube', 'tiktok' ];
+		$social_input = ( isset( $data['social_links'] ) && is_array( $data['social_links'] ) ) ? $data['social_links'] : [];
+		$social_links = [];
+		foreach ( $social_keys as $key ) {
+			$social_links[ $key ] = isset( $social_input[ $key ] ) ? esc_url_raw( (string) $social_input[ $key ] ) : '';
+		}
+
+		return [
+			'id'           => (int) $user->ID,
+			'name'         => (string) $user->display_name,
+			'avatar'       => $this->resolve_instructor_avatar( $user, $data ),
+			'intro'        => sanitize_text_field( (string) ( $data['intro'] ?? '' ) ),
+			'bio'          => sanitize_textarea_field( (string) ( $data['bio'] ?? '' ) ),
+			'experience'   => sanitize_textarea_field( (string) ( $data['experience'] ?? '' ) ),
+			'skills'       => array_values( array_unique( $skills ) ),
+			'social_links' => $social_links,
+		];
+	}
+
+	/**
+	 * Resolve instructor avatar from profile meta with fallback.
+	 *
+	 * @param \WP_User $user Instructor user.
+	 * @param array    $profile Raw profile meta array.
+	 * @return string
+	 */
+	private function resolve_instructor_avatar( \WP_User $user, array $profile ): string {
+		$avatar_id = absint( $profile['avatar_id'] ?? 0 );
+		if ( $avatar_id > 0 ) {
+			$attachment_url = wp_get_attachment_image_url( $avatar_id, 'medium' );
+			if ( is_string( $attachment_url ) && '' !== $attachment_url ) {
+				return esc_url_raw( $attachment_url );
+			}
+		}
+
+		$avatar_url = esc_url_raw( (string) ( $profile['avatar'] ?? '' ) );
+		if ( '' !== $avatar_url ) {
+			return $avatar_url;
+		}
+
+		return get_avatar_url( $user->ID );
+	}
+
+	/**
+	 * Resolve a course post from either numeric ID or slug route params.
+	 *
+	 * @param \WP_REST_Request $request Request object.
+	 * @return \WP_Post|null
+	 */
+	private function resolve_course_post( $request ) {
+		$id = (int) $request->get_param( 'id' );
+		if ( $id > 0 ) {
+			$post = get_post( $id );
+			return $post instanceof \WP_Post ? $post : null;
+		}
+
+		$slug = sanitize_title( (string) $request->get_param( 'slug' ) );
+		if ( '' === $slug ) {
+			return null;
+		}
+
+		$post = get_page_by_path( $slug, OBJECT, 'smc_training' );
+		return $post instanceof \WP_Post ? $post : null;
 	}
 }

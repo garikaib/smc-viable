@@ -142,7 +142,7 @@ class Shop_CPT {
         
         // If type is 'plan', which level does it grant?
         register_post_meta( 'smc_product', '_plan_level', [
-            'type'         => 'string', // 'basic', 'premium'
+            'type'         => 'string', // 'basic', 'standard'
             'single'       => true,
             'show_in_rest' => true,
         ] );
@@ -305,6 +305,9 @@ class Shop_CPT {
         // Set Meta on Training
         update_post_meta( $training_id, '_access_type', 'standalone' );
         update_post_meta( $training_id, '_plan_level', 'free' ); // Default
+        update_post_meta( $training_id, '_smc_access_modes', [ 'standalone' ] );
+        update_post_meta( $training_id, '_smc_allowed_plans', [] );
+        wp_set_post_terms( $training_id, [ 'standalone' ], 'smc_access_mode', false );
         
         // Linkage
         update_post_meta( $object_id, '_linked_training_id', $training_id );
@@ -327,7 +330,10 @@ class Shop_CPT {
             [ __CLASS__, 'render_product_settings_meta_box' ],
             'smc_product',
             'normal',
-            'high'
+            'high',
+            [
+                '__block_editor_compatible_meta_box' => true,
+            ]
         );
     }
 
@@ -360,9 +366,11 @@ class Shop_CPT {
         <div class="smc-product-meta-field" id="plan_level_field" style="<?php echo $type === 'plan' ? '' : 'display:none;'; ?>">
             <p><strong><?php _e( 'Plan Level', 'smc-viable' ); ?></strong></p>
             <select name="smc_product_plan_level" class="widefat">
-                <option value="free" <?php selected( $plan_level, 'free' ); ?>><?php _e( 'Free / Public', 'smc-viable' ); ?></option>
-                <option value="basic" <?php selected( $plan_level, 'basic' ); ?>><?php _e( 'Basic', 'smc-viable' ); ?></option>
-                <option value="premium" <?php selected( $plan_level, 'premium' ); ?>><?php _e( 'Premium', 'smc-viable' ); ?></option>
+                <?php foreach ( Plan_Tiers::get_level_labels() as $slug => $label ) : ?>
+                    <option value="<?php echo esc_attr( $slug ); ?>" <?php selected( $plan_level, $slug ); ?>>
+                        <?php echo esc_html( $label ); ?>
+                    </option>
+                <?php endforeach; ?>
             </select>
         </div>
 
@@ -405,12 +413,17 @@ class Shop_CPT {
             update_post_meta( $post_id, '_price', sanitize_text_field( $_POST['smc_product_price'] ) );
         }
 
+        $product_type = '';
         if ( isset( $_POST['smc_product_type'] ) ) {
-            update_post_meta( $post_id, '_product_type', sanitize_text_field( $_POST['smc_product_type'] ) );
+            $product_type = sanitize_key( (string) $_POST['smc_product_type'] );
+            update_post_meta( $post_id, '_product_type', $product_type );
         }
 
-        if ( isset( $_POST['smc_product_plan_level'] ) ) {
-            update_post_meta( $post_id, '_plan_level', sanitize_text_field( $_POST['smc_product_plan_level'] ) );
+        if ( 'plan' === $product_type && isset( $_POST['smc_product_plan_level'] ) ) {
+            $plan_level = Plan_Tiers::normalize_or_default( (string) $_POST['smc_product_plan_level'], 'free' );
+            update_post_meta( $post_id, '_plan_level', $plan_level );
+        } else {
+            delete_post_meta( $post_id, '_plan_level' );
         }
 
         if ( isset( $_POST['smc_product_training_id'] ) ) {

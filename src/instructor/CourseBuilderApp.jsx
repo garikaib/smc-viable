@@ -1,27 +1,22 @@
 import { useState, useEffect } from '@wordpress/element';
-import { LayoutDashboard, Layers, ArrowLeft, Moon, Sun } from 'lucide-react';
+import { LayoutDashboard, Layers, ArrowLeft, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import CourseBuilder from './CourseBuilder';
 import './style.scss'; // Ensure we have styles
 
 export default function CourseBuilderApp() {
     const [currentView, setCurrentView] = useState('dashboard'); // dashboard, editor, settings
-    const [darkMode, setDarkMode] = useState(true);
+    const [sidebarOpen, setSidebarOpen] = useState(true);
 
     useEffect(() => {
         document.body.classList.add('smc-admin-clean');
         return () => document.body.classList.remove('smc-admin-clean');
     }, []);
 
-    const toggleTheme = () => {
-        setDarkMode(!darkMode);
-        // Implementation depend on how theme is handled globally, for now toggle class on wrapper
-    };
-
     return (
-        <div className={`smc-course-builder-app min-h-screen flex bg-base-100 text-base-content ${darkMode ? 'dark-theme' : 'light-theme'}`}>
+        <div className={`smc-course-builder-app min-h-screen flex bg-base-100 text-base-content ${sidebarOpen ? 'sidebar-open' : 'sidebar-collapsed'}`}>
 
             {/* Sidebar Navigation */}
-            <aside className="smc-sidebar w-64 border-r border-base-content/10 flex flex-col justify-between p-6 bg-base-100">
+            <aside className={`smc-sidebar border-r border-base-content/10 flex flex-col justify-between p-6 bg-base-100 ${sidebarOpen ? '' : 'is-collapsed'}`}>
                 <div>
                     {wpApiSettings.siteName && (
                         <div className="smc-brand mb-10 flex items-center gap-3">
@@ -32,7 +27,7 @@ export default function CourseBuilderApp() {
                                     {wpApiSettings.siteName.charAt(0)}
                                 </div>
                             )}
-                            <span className="font-bold text-lg tracking-wider text-base-content truncate">{wpApiSettings.siteName}</span>
+                            {sidebarOpen && <span className="font-bold text-lg tracking-wider text-base-content truncate">{wpApiSettings.siteName}</span>}
                         </div>
                     )}
 
@@ -42,14 +37,14 @@ export default function CourseBuilderApp() {
                             onClick={() => setCurrentView('dashboard')}
                         >
                             <LayoutDashboard size={18} />
-                            <span>Dashboard</span>
+                            {sidebarOpen && <span>Dashboard</span>}
                         </button>
                         <button
                             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${currentView === 'editor' ? 'bg-base-content/10 text-base-content' : 'text-base-content/50 hover:text-base-content hover:bg-base-content/5'}`}
                             onClick={() => setCurrentView('editor')}
                         >
                             <Layers size={18} />
-                            <span>My Courses</span>
+                            {sidebarOpen && <span>My Courses</span>}
                         </button>
                     </nav>
                 </div>
@@ -57,7 +52,7 @@ export default function CourseBuilderApp() {
                 <div className="smc-user-actions border-t border-base-content/10 pt-6">
                     <a href="/wp-admin" className="flex items-center gap-3 text-base-content/50 hover:text-base-content transition-colors">
                         <ArrowLeft size={18} />
-                        <span>Back to WP</span>
+                        {sidebarOpen && <span>Back to WP</span>}
                     </a>
                 </div>
             </aside>
@@ -66,15 +61,19 @@ export default function CourseBuilderApp() {
             <main className="flex-1 flex flex-col relative overflow-hidden">
                 {/* Top Header */}
                 <header className="h-16 border-b border-base-content/10 flex items-center justify-between px-8 bg-base-100/80 backdrop-blur-md z-10">
-                    <div className="text-base-content/50 text-sm">
+                    <div className="flex items-center gap-3 text-base-content/50 text-sm">
+                        <button
+                            className="smc-sidebar-toggle-btn"
+                            onClick={() => setSidebarOpen((prev) => !prev)}
+                            aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+                            title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+                        >
+                            {sidebarOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
+                        </button>
                         Course Builder <span className="mx-2">/</span> <span className="text-base-content capitalize">{currentView}</span>
                     </div>
 
                     <div className="flex items-center gap-4">
-                        <button className="p-2 rounded-full hover:bg-base-content/5 text-base-content/50 hover:text-base-content" onClick={toggleTheme}>
-                            {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-                        </button>
-
                         {wpApiSettings.user && (
                             <div className="flex items-center gap-3 pl-4 border-l border-base-content/10">
                                 <div className="text-right hidden sm:block">

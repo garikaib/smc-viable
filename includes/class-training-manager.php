@@ -25,6 +25,7 @@ class Training_Manager {
 		add_action( 'init', [ __CLASS__, 'register_training_cpt' ] );
         add_action( 'init', [ __CLASS__, 'register_training_meta' ] );
         add_action( 'init', [ __CLASS__, 'register_access_level_taxonomy' ] );
+        add_action( 'template_redirect', [ __CLASS__, 'redirect_training_to_learning_player' ] );
         
         // Attempt to disable Avada (Fusion Builder) for this type.
         // Avada typically checks 'fusion_settings' or filters 'fusion_builder_allowed_post_types'.
@@ -70,7 +71,54 @@ class Training_Manager {
      * Register Taxonomy.
      */
     public static function register_access_level_taxonomy(): void {
-         // Placeholder
+        // Access modes can be combined in Gutenberg (e.g. plan + standalone).
+        register_taxonomy(
+            'smc_access_mode',
+            [ 'smc_training' ],
+            [
+                'labels' => [
+                    'name'          => __( 'Access Modes', 'smc-viable' ),
+                    'singular_name' => __( 'Access Mode', 'smc-viable' ),
+                ],
+                'public'            => false,
+                'show_ui'           => true,
+                'show_in_rest'      => true,
+                'show_admin_column' => true,
+                'hierarchical'      => false,
+                'rewrite'           => false,
+            ]
+        );
+
+        // Explicit plan tags for course entitlement (free, basic, standard, etc.).
+        register_taxonomy(
+            'smc_plan_access',
+            [ 'smc_training' ],
+            [
+                'labels' => [
+                    'name'          => __( 'Plan Access', 'smc-viable' ),
+                    'singular_name' => __( 'Plan Access', 'smc-viable' ),
+                ],
+                'public'            => false,
+                'show_ui'           => true,
+                'show_in_rest'      => true,
+                'show_admin_column' => true,
+                'hierarchical'      => false,
+                'rewrite'           => false,
+            ]
+        );
+
+        // Seed common terms if missing (safe no-op when they exist).
+        foreach ( [ 'standalone', 'plan' ] as $mode_slug ) {
+            if ( ! term_exists( $mode_slug, 'smc_access_mode' ) ) {
+                wp_insert_term( ucfirst( $mode_slug ), 'smc_access_mode', [ 'slug' => $mode_slug ] );
+            }
+        }
+
+        foreach ( Plan_Tiers::get_levels() as $plan_slug ) {
+            if ( ! term_exists( $plan_slug, 'smc_plan_access' ) ) {
+                wp_insert_term( ucfirst( $plan_slug ), 'smc_plan_access', [ 'slug' => $plan_slug ] );
+            }
+        }
     }
 
     /**
@@ -110,9 +158,34 @@ class Training_Manager {
         ] );
 
         register_post_meta( 'smc_training', '_plan_level', [
-            'type'         => 'string', // 'free', 'basic', 'premium'
+            'type'         => 'string', // 'free', 'basic', 'standard'
             'single'       => true,
             'show_in_rest' => true,
+        ] );
+
+        // Gutenberg-friendly multi-value fields (used with taxonomies, kept for API consumers).
+        register_post_meta( 'smc_training', '_smc_access_modes', [
+            'type'         => 'array',
+            'single'       => true,
+            'show_in_rest' => [
+                'schema' => [
+                    'type'  => 'array',
+                    'items' => [ 'type' => 'string' ],
+                ],
+            ],
+            'default'      => [],
+        ] );
+
+        register_post_meta( 'smc_training', '_smc_allowed_plans', [
+            'type'         => 'array',
+            'single'       => true,
+            'show_in_rest' => [
+                'schema' => [
+                    'type'  => 'array',
+                    'items' => [ 'type' => 'string' ],
+                ],
+            ],
+            'default'      => [],
         ] );
 
         register_post_meta( 'smc_training', '_prerequisite_course_id', [
@@ -132,6 +205,18 @@ class Training_Manager {
              'single'       => true,
              'show_in_rest' => true,
          ] );
+
+        register_post_meta( 'smc_training', '_linked_product_id', [
+            'type'         => 'integer',
+            'single'       => true,
+            'show_in_rest' => true,
+        ] );
+
+        register_post_meta( 'smc_training', '_course_thumbnail_url', [
+            'type'         => 'string',
+            'single'       => true,
+            'show_in_rest' => true,
+        ] );
     }
 
     /**
@@ -154,52 +239,25 @@ class Training_Manager {
      * @param string $content Post content.
      * @return string
      */
-    public static function restrict_content( string $content ): string {
+	public static function restrict_content( string $content ): string {
         global $post;
 
         if ( ! $post || 'smc_training' !== $post->post_type ) {
             return $content;
         }
 
-        // 1. Get Linked Quiz
-        $quiz_id = (int) get_post_meta( $post->ID, '_linked_quiz_id', true );
-        if ( ! $quiz_id ) {
-            // content is public if no quiz linked? Or default strict?
-            // Let's assume strict: if it's training, it needs a plan unless explicitly 'free'
-            // For now, if not linked, let's allow (or user forgot to link).
-            return $content; 
-        }
-
-        // 2. Get Quiz Plan Level
-        $quiz_plan = get_post_meta( $quiz_id, '_smc_quiz_plan_level', true ) ?: 'free';
-        if ( 'free' === $quiz_plan ) {
-            return $content;
-        }
-
-        // 3. Check User Access
         $user_id = get_current_user_id();
-        if ( ! $user_id ) {
-             return self::get_locked_message( 'login' );
-        }
-
         if ( current_user_can( 'manage_options' ) ) {
             return $content; // Admin sees all
         }
 
-        // Check active subscriptions (this logic will be robustified)
-        // For now, check user meta '_smc_user_plan'
-        $user_plan = get_user_meta( $user_id, '_smc_user_plan', true ) ?: 'free';
-
-        // Hierarchy: premium > basic > free
-        if ( $quiz_plan === 'premium' && $user_plan !== 'premium' ) {
-             return self::get_locked_message( 'upgrade' );
+        if ( ! $user_id ) {
+            return self::get_locked_message( 'login' );
         }
 
-        if ( $quiz_plan === 'basic' && ( $user_plan === 'free' ) ) {
-             return self::get_locked_message( 'upgrade' );
-        }
-
-        return $content;
+        return Enrollment_Manager::can_access_course( $user_id, (int) $post->ID )
+            ? $content
+            : self::get_locked_message( 'upgrade' );
     }
 
     /**
@@ -228,19 +286,62 @@ class Training_Manager {
     /**
      * Check if user can access course (Entitlement + Prerequisites).
      */
-    public static function can_access_course( int $user_id, int $course_id ): bool|WP_Error {
-        // 1. Check Prerequisite
-        $prereq_id = get_post_meta( $course_id, '_prerequisite', true );
-        if ( ! empty( $prereq_id ) ) {
-            // Check if user has completed prereq_id
-            // Use user meta cache for efficiency
-            $percent = get_user_meta( $user_id, "_smc_progress_{$prereq_id}", true );
-            if ( (int) $percent < 100 ) {
-                $prereq_nav = get_post( $prereq_id );
-                return new \WP_Error( 'prerequisite_locked', 'You must complete ' . $prereq_nav->post_title . ' first.' );
+    public static function can_access_course( int $user_id, int $course_id ): bool|\WP_Error {
+        // 1. Check prerequisite completion when configured.
+        $prereq_id = (int) get_post_meta( $course_id, '_prerequisite', true );
+        if ( $prereq_id > 0 ) {
+            $percent = (int) get_user_meta( $user_id, "_smc_progress_{$prereq_id}", true );
+            if ( $percent < 100 ) {
+                $prereq = get_post( $prereq_id );
+                $title = ( $prereq instanceof \WP_Post && ! empty( $prereq->post_title ) )
+                    ? $prereq->post_title
+                    : __( 'the prerequisite course', 'smc-viable' );
+                return new \WP_Error( 'prerequisite_locked', sprintf( __( 'You must complete %s first.', 'smc-viable' ), $title ) );
             }
         }
-        
-        return true;
+
+        // 2. Delegate entitlement checks to Enrollment Manager.
+        return Enrollment_Manager::can_access_course( $user_id, $course_id );
+    }
+
+    /**
+     * Redirect legacy/public training single URLs to the learning player URL.
+     */
+    public static function redirect_training_to_learning_player(): void {
+        if ( is_admin() || wp_doing_ajax() ) {
+            return;
+        }
+
+        if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+            return;
+        }
+
+        if ( ! is_singular( 'smc_training' ) ) {
+            return;
+        }
+
+        $course = get_queried_object();
+        if ( ! ( $course instanceof \WP_Post ) || empty( $course->post_name ) ) {
+            return;
+        }
+
+        $target = home_url( '/' . self::get_learning_page_path() . '/' . $course->post_name . '/' );
+        wp_safe_redirect( $target, 301 );
+        exit;
+    }
+
+    /**
+     * Resolve the student learning page path.
+     */
+    private static function get_learning_page_path(): string {
+        $learning_page = get_page_by_path( 'learning' );
+        if ( $learning_page instanceof \WP_Post ) {
+            $uri = trim( (string) get_page_uri( $learning_page ), '/' );
+            if ( '' !== $uri ) {
+                return $uri;
+            }
+        }
+
+        return 'learning';
     }
 }

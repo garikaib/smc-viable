@@ -1,195 +1,273 @@
 import { __ } from '@wordpress/i18n';
-import { Button, TextControl, Spinner, Notice, TabPanel, TextareaControl, RadioControl, PanelBody, PanelRow, ToggleControl } from '@wordpress/components';
-import { useState, useEffect } from '@wordpress/element';
+import { Button, TextControl, Spinner, Notice, TabPanel, TextareaControl, RadioControl, ToggleControl } from '@wordpress/components';
+import { useState, useEffect, useMemo, useCallback } from '@wordpress/element';
+import { ArrowLeft, Plus, Save, LoaderCircle, CheckCircle2, Clock3, LayoutPanelTop, SlidersHorizontal, ChartColumnIncreasing, Trash2, PlusCircle } from 'lucide-react';
 import { fetchQuiz, saveQuiz } from '../utils/api';
 import QuestionEditor from './QuestionEditor';
 import DashboardRuleEditor from './DashboardRuleEditor';
 
+const DEFAULT_SETTINGS = {
+    delivery_mode: 'download',
+    guest_pdf_access: 'account_required',
+    logged_in_email_link: true,
+    guest_email_capture: true
+};
+const PLAN_OPTIONS = Array.isArray(window.smcQuizSettings?.planTiers) && window.smcQuizSettings.planTiers.length
+    ? window.smcQuizSettings.planTiers
+    : [
+        { label: 'Free Plan', value: 'free' },
+        { label: 'Basic', value: 'basic' },
+        { label: 'Standard', value: 'standard' },
+    ];
+
 export default function QuizEditor({ quizId, onBack }) {
     const [title, setTitle] = useState('');
     const [questions, setQuestions] = useState([]);
-
-    // Config States
-    const [settings, setSettings] = useState({ delivery_mode: 'download' });
+    const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
+    const [settings, setSettings] = useState(DEFAULT_SETTINGS);
     const [stages, setStages] = useState(['Market & Offering', 'Business Model', 'Execution']);
     const [planLevel, setPlanLevel] = useState('free');
-
-    // Dashboard States
+    const [shopSettings, setShopSettings] = useState({
+        enabled: false,
+        access_mode: 'standalone',
+        assigned_plan: 'free',
+        price: 0,
+        features: []
+    });
     const [dashboardTitle, setDashboardTitle] = useState('Assessment Results');
     const [dashboardRules, setDashboardRules] = useState([]);
-    const [showJsonEditor, setShowJsonEditor] = useState(false); // Toggle for advanced mode
-    const [rawJson, setRawJson] = useState(''); // Only used if showJsonEditor is true
-
+    const [showJsonEditor, setShowJsonEditor] = useState(false);
     const [isLoading, setIsLoading] = useState(!!quizId);
     const [isSaving, setIsSaving] = useState(false);
+    const [lastSavedSnapshot, setLastSavedSnapshot] = useState(null);
+    const [lastSavedAt, setLastSavedAt] = useState(null);
     const [notice, setNotice] = useState(null);
 
     useEffect(() => {
-        if (quizId) {
-            fetchQuiz(quizId)
-                .then((data) => {
-                    setTitle(data.title.rendered);
-
-                    const meta = data.meta || {};
-                    const metaQuestions = meta._smc_quiz_questions || [];
-                    setQuestions(Array.isArray(metaQuestions) ? metaQuestions : []);
-
-                    if (meta._smc_quiz_settings) setSettings(meta._smc_quiz_settings);
-
-                    if (meta._smc_quiz_stages && Array.isArray(meta._smc_quiz_stages) && meta._smc_quiz_stages.length > 0) {
-                        setStages(meta._smc_quiz_stages);
-                    }
-
-                    if (meta._smc_quiz_plan_level) {
-                        setPlanLevel(meta._smc_quiz_plan_level);
-                    }
-
-                    // Parse Dashboard Config
-                    if (meta._smc_quiz_dashboard_config) {
-                        try {
-                            const conf = typeof meta._smc_quiz_dashboard_config === 'string'
-                                ? JSON.parse(meta._smc_quiz_dashboard_config)
-                                : meta._smc_quiz_dashboard_config;
-
-                            if (conf && conf.dashboard_config) {
-                                setDashboardTitle(conf.dashboard_config.title || 'Assessment Results');
-                                setDashboardRules(conf.dashboard_config.rules || []);
-                            }
-                        } catch (e) {
-                            console.error("Failed to parse existing dashboard config", e);
+        if (!quizId) return;
+        fetchQuiz(quizId)
+            .then((data) => {
+                setTitle(data.title.rendered || '');
+                const meta = data.meta || {};
+                const metaQuestions = meta._smc_quiz_questions || [];
+                const parsedQuestions = Array.isArray(metaQuestions) ? metaQuestions : [];
+                setQuestions(parsedQuestions);
+                setActiveQuestionIndex(parsedQuestions.length ? 0 : -1);
+                if (meta._smc_quiz_settings) {
+                    const incomingSettings = typeof meta._smc_quiz_settings === 'object' && meta._smc_quiz_settings
+                        ? meta._smc_quiz_settings
+                        : {};
+                    setSettings({ ...DEFAULT_SETTINGS, ...incomingSettings });
+                }
+                if (meta._smc_quiz_stages && Array.isArray(meta._smc_quiz_stages) && meta._smc_quiz_stages.length > 0) {
+                    setStages(meta._smc_quiz_stages);
+                }
+                if (meta._smc_quiz_plan_level) setPlanLevel(meta._smc_quiz_plan_level);
+                if (meta._smc_quiz_shop) {
+                    const incoming = meta._smc_quiz_shop;
+                    setShopSettings({
+                        enabled: !!incoming.enabled,
+                        access_mode: incoming.access_mode || 'standalone',
+                        assigned_plan: incoming.assigned_plan || 'free',
+                        price: incoming.price || 0,
+                        features: Array.isArray(incoming.features) ? incoming.features : []
+                    });
+                }
+                if (meta._smc_quiz_dashboard_config) {
+                    try {
+                        const conf = typeof meta._smc_quiz_dashboard_config === 'string'
+                            ? JSON.parse(meta._smc_quiz_dashboard_config)
+                            : meta._smc_quiz_dashboard_config;
+                        if (conf && conf.dashboard_config) {
+                            setDashboardTitle(conf.dashboard_config.title || 'Assessment Results');
+                            setDashboardRules(conf.dashboard_config.rules || []);
                         }
+                    } catch (e) {
+                        setNotice({ status: 'error', text: __('Failed to parse dashboard config.', 'smc-viable') });
                     }
-                })
-                .catch((err) => setNotice({ status: 'error', text: err.message }))
-                .finally(() => setIsLoading(false));
-        }
-    }, [quizId]);
-
-    const handleSave = () => {
-        setIsSaving(true);
-        setNotice(null);
-
-        // Reconstruct Dashboard Config JSON
-        const fullDashboardConfig = {
-            version: "1.0.0",
-            dashboard_config: {
-                title: dashboardTitle,
-                rules: dashboardRules
-            }
-        };
-
-        const data = {
-            id: quizId,
-            title: title || __('New Quiz', 'smc-viable'),
-            status: 'publish',
-            questions: questions,
-            settings: settings,
-            dashboard_config: fullDashboardConfig,
-            stages: stages,
-            plan_level: planLevel
-        };
-
-        saveQuiz(data)
-            .then(() => {
-                setNotice({ status: 'success', text: __('Quiz saved successfully!', 'smc-viable') });
-                if (!quizId) {
-                    onBack();
                 }
             })
             .catch((err) => setNotice({ status: 'error', text: err.message }))
-            .finally(() => setIsSaving(false));
-    };
+            .finally(() => setIsLoading(false));
+    }, [quizId]);
 
-    // --- Helpers ---
+    const savePayload = useMemo(() => {
+        const fullDashboardConfig = {
+            version: '1.0.0',
+            dashboard_config: { title: dashboardTitle, rules: dashboardRules }
+        };
+        return {
+            id: quizId,
+            title: title || __('New Quiz', 'smc-viable'),
+            status: 'publish',
+            questions,
+            settings,
+            dashboard_config: fullDashboardConfig,
+            stages,
+            plan_level: planLevel,
+            shop: { ...shopSettings, price: Number(shopSettings.price || 0) }
+        };
+    }, [quizId, title, questions, settings, dashboardTitle, dashboardRules, stages, planLevel, shopSettings]);
+
+    const currentSnapshot = useMemo(() => JSON.stringify(savePayload), [savePayload]);
+    const isDirty = lastSavedSnapshot !== null && currentSnapshot !== lastSavedSnapshot;
+
+    useEffect(() => {
+        if (lastSavedSnapshot === null && !isLoading) {
+            setLastSavedSnapshot(currentSnapshot);
+        }
+    }, [currentSnapshot, isLoading, lastSavedSnapshot]);
+
+    const handleSave = useCallback(({ silent = false } = {}) => {
+        if (isSaving) return;
+        setIsSaving(true);
+        if (!silent) {
+            setNotice(null);
+        }
+
+        saveQuiz(savePayload)
+            .then(() => {
+                setLastSavedSnapshot(currentSnapshot);
+                setLastSavedAt(new Date());
+                if (!silent) {
+                    setNotice({ status: 'success', text: __('Assessment saved successfully.', 'smc-viable') });
+                }
+            })
+            .catch((err) => {
+                if (silent) {
+                    setNotice({ status: 'error', text: __('Autosave failed. Please save manually.', 'smc-viable') });
+                } else {
+                    setNotice({ status: 'error', text: err.message });
+                }
+            })
+            .finally(() => setIsSaving(false));
+    }, [isSaving, savePayload, currentSnapshot]);
+
+    useEffect(() => {
+        if (!quizId || isLoading || isSaving || !isDirty) return;
+        const timer = setTimeout(() => {
+            handleSave({ silent: true });
+        }, 10000);
+        return () => clearTimeout(timer);
+    }, [quizId, isLoading, isSaving, isDirty, handleSave, currentSnapshot]);
+
     const addQuestion = () => {
         const newQ = {
-            id: Date.now(),
-            type: 'scorable',
+            id: `q_${Date.now()}`,
+            version: 2,
+            type: 'single_choice',
             stage: stages[0] || 'Other',
             indicator: '',
             text: '',
-            options: []
+            choices: [
+                { id: `choice_${Date.now()}_1`, label: 'Option 1', points: 0 },
+                { id: `choice_${Date.now()}_2`, label: 'Option 2', points: 0 },
+            ],
+            grading: { mode: 'auto', max_points: 0, min_points: 0 }
         };
-        setQuestions([...questions, newQ]);
+        const next = [...questions, newQ];
+        setQuestions(next);
+        setActiveQuestionIndex(next.length - 1);
     };
 
     const updateQuestion = (index, newQ) => {
-        const newQuestions = [...questions];
-        newQuestions[index] = newQ;
-        setQuestions(newQuestions);
+        const next = [...questions];
+        next[index] = newQ;
+        setQuestions(next);
     };
 
     const removeQuestion = (index) => {
-        const newQuestions = questions.filter((_, i) => i !== index);
-        setQuestions(newQuestions);
+        const next = questions.filter((_, i) => i !== index);
+        setQuestions(next);
+        if (!next.length) setActiveQuestionIndex(-1);
+        else if (index <= activeQuestionIndex) setActiveQuestionIndex(Math.max(0, activeQuestionIndex - 1));
     };
 
-    // Stage Management
+    const cloneQuestion = (index) => {
+        if (index < 0 || index >= questions.length) return;
+        const source = questions[index];
+        const copy = {
+            ...source,
+            id: Date.now(),
+            text: source.text ? `${source.text} (Copy)` : 'Copied Question',
+            options: Array.isArray(source.options)
+                ? source.options.map((opt) => (typeof opt === 'object' ? { ...opt } : opt))
+                : []
+        };
+        const next = [...questions];
+        next.splice(index + 1, 0, copy);
+        setQuestions(next);
+        setActiveQuestionIndex(index + 1);
+    };
+
     const addStage = () => setStages([...stages, 'New Stage']);
     const updateStage = (idx, val) => {
-        const newStages = [...stages];
-        newStages[idx] = val;
-        setStages(newStages);
+        const next = [...stages];
+        next[idx] = val;
+        setStages(next);
     };
-    const removeStage = (idx) => {
-        const newStages = stages.filter((_, i) => i !== idx);
-        setStages(newStages);
-    };
+    const removeStage = (idx) => setStages(stages.filter((_, i) => i !== idx));
 
-    // Dashboard Rule Management
     const addRule = () => {
-        const newRule = {
-            id: `rule_${Date.now()}`,
-            condition_text: 'New Condition',
-            logic: { operator: 'gt', value: 50, min: 0, max: 0 },
-            message: 'Feedback message here...',
-            style: { color: 'green', icon: 'check' }
-        };
-        setDashboardRules([...dashboardRules, newRule]);
-    };
-
-    const updateRule = (index, newRule) => {
-        const newRules = [...dashboardRules];
-        newRules[index] = newRule;
-        setDashboardRules(newRules);
-    };
-
-    const removeRule = (index) => {
-        const newRules = dashboardRules.filter((_, i) => i !== index);
-        setDashboardRules(newRules);
-    };
-
-    const handleImportJson = (jsonString) => {
-        try {
-            const parsed = JSON.parse(jsonString);
-            if (parsed.dashboard_config) {
-                setDashboardTitle(parsed.dashboard_config.title || dashboardTitle);
-                setDashboardRules(parsed.dashboard_config.rules || []);
-                setNotice({ status: 'success', text: 'Dashboard config imported!' });
-            } else {
-                setNotice({ status: 'error', text: 'Invalid JSON format: missing dashboard_config' });
+        setDashboardRules([
+            ...dashboardRules,
+            {
+                id: `rule_${Date.now()}`,
+                condition_text: 'New Condition',
+                logic: { operator: 'gt', value: 50, min: 0, max: 0 },
+                message: 'Feedback message here...',
+                style: { color: 'green', icon: 'check' }
             }
-        } catch (e) {
-            setNotice({ status: 'error', text: 'Invalid JSON' });
-        }
+        ]);
     };
-
+    const updateRule = (index, newRule) => {
+        const next = [...dashboardRules];
+        next[index] = newRule;
+        setDashboardRules(next);
+    };
+    const removeRule = (index) => setDashboardRules(dashboardRules.filter((_, i) => i !== index));
 
     if (isLoading) return <Spinner />;
 
+    const activeQuestion = questions[activeQuestionIndex];
+    const saveStatusText = isSaving
+        ? __('Saving...', 'smc-viable')
+        : isDirty
+            ? __('Unsaved changes', 'smc-viable')
+            : lastSavedAt
+                ? __('All changes saved', 'smc-viable')
+                : __('Ready', 'smc-viable');
+
     return (
-        <div className="smc-quiz-editor" style={{ maxWidth: '100%', width: '100%' }}>
-            <div className="smc-editor-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <Button isLink onClick={onBack}>&larr; {__('Back to List', 'smc-viable')}</Button>
-                <div>
-                    <Button isPrimary onClick={handleSave} isBusy={isSaving}>{__('Save Quiz', 'smc-viable')}</Button>
+        <div className="smc-quiz-editor smc-panel">
+            <div className="smc-editor-header">
+                <button type="button" className="smc-quiz-header-action smc-quiz-header-action-back" onClick={onBack}>
+                    <ArrowLeft size={16} />
+                    <span>{__('Back to Library', 'smc-viable')}</span>
+                </button>
+                <div className="smc-editor-header-actions">
+                    <button type="button" className="smc-quiz-header-action" onClick={addQuestion}>
+                        <Plus size={16} />
+                        <span>{__('Add Question', 'smc-viable')}</span>
+                    </button>
+                    <button type="button" className="smc-quiz-header-action smc-quiz-header-action-save" onClick={() => handleSave()}>
+                        {isSaving ? <LoaderCircle size={16} className="smc-spin" /> : <Save size={16} />}
+                        <span>{__('Save Now', 'smc-viable')}</span>
+                    </button>
+                    <span className={`smc-quiz-save-state ${isDirty ? 'is-dirty' : 'is-clean'}`}>
+                        {isSaving ? <LoaderCircle size={14} className="smc-spin" /> : isDirty ? <Clock3 size={14} /> : <CheckCircle2 size={14} />}
+                        <span>{saveStatusText}</span>
+                    </span>
                 </div>
             </div>
 
-            <h2 style={{ marginTop: 0 }}>{quizId ? __('Edit Quiz', 'smc-viable') : __('Create Quiz', 'smc-viable')}</h2>
+            <div className="smc-editor-title-row">
+                <h2>{quizId ? __('Edit Assessment', 'smc-viable') : __('Create Assessment', 'smc-viable')}</h2>
+                <p>{__('Use the visual editor to shape stages, scoring and report behavior.', 'smc-viable')}</p>
+            </div>
 
             <TextControl
-                label={__('Quiz Title', 'smc-viable')}
+                label={__('Assessment Title', 'smc-viable')}
                 value={title}
                 onChange={setTitle}
                 __next40pxDefaultSize
@@ -197,133 +275,232 @@ export default function QuizEditor({ quizId, onBack }) {
             />
 
             <TabPanel
-                className="my-tab-panel"
+                className="my-tab-panel smc-editor-tabs"
                 activeClass="is-active"
                 tabs={[
-                    { name: 'questions', title: __('Questions', 'smc-viable'), className: 'tab-questions' },
-                    { name: 'config', title: __('Configuration', 'smc-viable'), className: 'tab-config' },
-                    { name: 'dashboard', title: __('Dashboard Logic', 'smc-viable'), className: 'tab-dashboard' },
+                    {
+                        name: 'questions',
+                        title: (
+                            <span className="smc-tab-label">
+                                <LayoutPanelTop size={15} className="smc-tab-icon" />
+                                <span>{__('Visual Builder', 'smc-viable')}</span>
+                            </span>
+                        )
+                    },
+                    {
+                        name: 'config',
+                        title: (
+                            <span className="smc-tab-label">
+                                <SlidersHorizontal size={15} className="smc-tab-icon" />
+                                <span>{__('Configuration', 'smc-viable')}</span>
+                            </span>
+                        )
+                    },
+                    {
+                        name: 'dashboard',
+                        title: (
+                            <span className="smc-tab-label">
+                                <ChartColumnIncreasing size={15} className="smc-tab-icon" />
+                                <span>{__('Scoring Logic', 'smc-viable')}</span>
+                            </span>
+                        )
+                    },
                 ]}
             >
                 {(tab) => {
                     if (tab.name === 'questions') {
                         return (
-                            <div style={{ marginTop: '20px' }}>
-                                {questions.map((q, index) => (
-                                    <QuestionEditor
-                                        key={index}
-                                        question={q}
-                                        stages={stages}
-                                        onChange={(newQ) => updateQuestion(index, newQ)}
-                                        onRemove={() => removeQuestion(index)}
-                                    />
-                                ))}
-                                <Button isSecondary onClick={addQuestion} style={{ marginTop: '20px' }}>{__('Add Question', 'smc-viable')}</Button>
-                            </div>
-                        );
-                    } else if (tab.name === 'config') {
-                        return (
-                            <div style={{ marginTop: '20px' }}>
-                                <h3>{__('Report Settings', 'smc-viable')}</h3>
-                                <RadioControl
-                                    label={__('Delivery Mode', 'smc-viable')}
-                                    selected={settings.delivery_mode}
-                                    options={[
-                                        { label: 'Direct Download (PDF)', value: 'download' },
-                                        { label: 'Email Report (collect Name/Email/Phone)', value: 'email' },
-                                    ]}
-                                    onChange={(val) => setSettings({ ...settings, delivery_mode: val })}
-                                />
-                                <hr style={{ margin: '20px 0' }} />
-
-                                <RadioControl
-                                    label={__('Plan Level', 'smc-viable')}
-                                    selected={planLevel}
-                                    options={[
-                                        { label: 'Free', value: 'free' },
-                                        { label: 'Basic ($5)', value: 'basic' },
-                                        { label: 'Premium ($10)', value: 'premium' },
-                                    ]}
-                                    onChange={setPlanLevel}
-                                    help={__('Determines which plan is required to access linked Training Material.', 'smc-viable')}
-                                />
-
-                                <hr style={{ margin: '20px 0' }} />
-
-                                <h3>{__('Stages / Categories', 'smc-viable')}</h3>
-                                <p className="description">{__('Define the stages used to group questions.', 'smc-viable')}</p>
-                                {stages.map((stage, idx) => (
-                                    <div key={idx} style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-                                        <TextControl
-                                            value={stage}
-                                            onChange={(val) => updateStage(idx, val)}
-                                            style={{ marginBottom: 0, flexGrow: 1 }}
-                                            __next40pxDefaultSize
-                                            __nextHasNoMarginBottom
-                                        />
-                                        <Button isDestructive variant="link" onClick={() => removeStage(idx)}>X</Button>
+                            <div className="smc-visual-editor">
+                                <aside className="smc-question-nav">
+                                    <div className="smc-question-nav-head">
+                                        <h3>{__('Questions', 'smc-viable')}</h3>
+                                        <span>{questions.length}</span>
                                     </div>
-                                ))}
-                                <Button isSecondary onClick={addStage} isSmall>{__('Add Stage', 'smc-viable')}</Button>
-                            </div>
-                        );
-                    } else if (tab.name === 'dashboard') {
-                        return (
-                            <div style={{ marginTop: '20px' }}>
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3>{__('Scoring Rules', 'smc-viable')}</h3>
-                                    <div className="flex gap-2">
-                                        <Button isSecondary isSmall onClick={() => {
-                                            const input = document.createElement('input');
-                                            input.type = 'file';
-                                            input.accept = 'application/json';
-                                            input.onchange = (e) => {
-                                                const file = e.target.files[0];
-                                                const reader = new FileReader();
-                                                reader.onload = (ev) => handleImportJson(ev.target.result);
-                                                reader.readAsText(file);
-                                            };
-                                            input.click();
-                                        }}>Import JSON</Button>
-                                        <ToggleControl
-                                            label="Advanced (Raw JSON)"
-                                            checked={showJsonEditor}
-                                            onChange={setShowJsonEditor}
-                                        />
-                                    </div>
-                                </div>
-
-                                <TextControl
-                                    label={__('Report Title', 'smc-viable')}
-                                    value={dashboardTitle}
-                                    onChange={setDashboardTitle}
-                                    help="The title shown on the final results page/PDF."
-                                />
-
-                                {showJsonEditor ? (
-                                    <TextareaControl
-                                        label="Raw JSON Config"
-                                        value={JSON.stringify({ version: "1.0.0", dashboard_config: { title: dashboardTitle, rules: dashboardRules } }, null, 2)}
-                                        onChange={(val) => handleImportJson(val)}
-                                        rows={15}
-                                    />
-                                ) : (
-                                    <div className="mt-6">
-                                        {dashboardRules.length === 0 && <p className="text-gray-500 italic">No rules defined. Add one below.</p>}
-                                        {dashboardRules.map((rule, idx) => (
-                                            <DashboardRuleEditor
-                                                key={idx}
-                                                rule={rule}
-                                                onChange={(newRule) => updateRule(idx, newRule)}
-                                                onRemove={() => removeRule(idx)}
-                                            />
+                                    <div className="smc-question-list">
+                                        {questions.map((q, index) => (
+                                            <button
+                                                key={q.id || index}
+                                                className={`smc-question-pill ${index === activeQuestionIndex ? 'active' : ''}`}
+                                                onClick={() => setActiveQuestionIndex(index)}
+                                            >
+                                                <strong>Q{index + 1}</strong>
+                                                <span>{q.text || __('Untitled question', 'smc-viable')}</span>
+                                            </button>
                                         ))}
-                                        <Button isSecondary onClick={addRule}>{__('Add Scoring Rule', 'smc-viable')}</Button>
                                     </div>
-                                )}
+                                    <button type="button" className="smc-quiz-nav-add-inline" onClick={addQuestion}>
+                                        <Plus size={15} />
+                                        <span>{__('Add Question', 'smc-viable')}</span>
+                                    </button>
+                                </aside>
+
+                                <section className="smc-question-canvas">
+                                    {activeQuestion ? (
+                                        <QuestionEditor
+                                            question={activeQuestion}
+                                            stages={stages}
+                                            onChange={(newQ) => updateQuestion(activeQuestionIndex, newQ)}
+                                            onClone={() => cloneQuestion(activeQuestionIndex)}
+                                            onRemove={() => removeQuestion(activeQuestionIndex)}
+                                        />
+                                    ) : (
+                                        <div className="smc-empty-state">
+                                            <h3>{__('No questions yet', 'smc-viable')}</h3>
+                                            <p>{__('Start by adding your first assessment question.', 'smc-viable')}</p>
+                                        </div>
+                                    )}
+                                </section>
                             </div>
                         );
                     }
+
+                    if (tab.name === 'config') {
+                        return (
+                            <div className="smc-editor-section smc-editor-section-config">
+                                <h3>{__('Report Delivery', 'smc-viable')}</h3>
+                                <RadioControl
+                                    label={__('Guest PDF Access', 'smc-viable')}
+                                    selected={settings.guest_pdf_access}
+                                    options={[
+                                        { label: __('Allow instant PDF download for guests', 'smc-viable'), value: 'public' },
+                                        { label: __('Require login/registration before PDF download', 'smc-viable'), value: 'account_required' },
+                                    ]}
+                                    onChange={(val) => setSettings({ ...settings, guest_pdf_access: val })}
+                                />
+                                <ToggleControl
+                                    label={__('Allow logged-in users to request an email download link', 'smc-viable')}
+                                    checked={!!settings.logged_in_email_link}
+                                    onChange={(val) => setSettings({ ...settings, logged_in_email_link: !!val })}
+                                />
+                                <ToggleControl
+                                    label={__('Allow guests to email report link (captures email/phone leads)', 'smc-viable')}
+                                    checked={!!settings.guest_email_capture}
+                                    onChange={(val) => setSettings({ ...settings, guest_email_capture: !!val })}
+                                />
+
+                                <h3>{__('Access & Plan', 'smc-viable')}</h3>
+                                <RadioControl
+                                    label={__('Plan Level', 'smc-viable')}
+                                    selected={planLevel}
+                                    options={PLAN_OPTIONS}
+                                    onChange={setPlanLevel}
+                                />
+
+                                <h3>{__('Shop Placement', 'smc-viable')}</h3>
+                                <ToggleControl
+                                    label={__('List this assessment in shop', 'smc-viable')}
+                                    checked={!!shopSettings.enabled}
+                                    onChange={(val) => setShopSettings({ ...shopSettings, enabled: !!val })}
+                                />
+                                {shopSettings.enabled && (
+                                    <div className="smc-shop-config-grid">
+                                        <RadioControl
+                                            label={__('Access Model', 'smc-viable')}
+                                            selected={shopSettings.access_mode}
+                                            options={[
+                                                { label: 'Standalone purchase', value: 'standalone' },
+                                                { label: 'Assigned to plan only', value: 'plan' },
+                                                { label: 'Both (purchase + plan)', value: 'both' },
+                                            ]}
+                                            onChange={(val) => setShopSettings({ ...shopSettings, access_mode: val })}
+                                        />
+                                        <RadioControl
+                                            label={__('Assigned plan', 'smc-viable')}
+                                            selected={shopSettings.assigned_plan}
+                                            options={PLAN_OPTIONS}
+                                            onChange={(val) => setShopSettings({ ...shopSettings, assigned_plan: val })}
+                                        />
+                                        <TextControl
+                                            label={__('Standalone Price ($)', 'smc-viable')}
+                                            type="number"
+                                            value={shopSettings.price}
+                                            onChange={(val) => setShopSettings({ ...shopSettings, price: val })}
+                                        />
+                                        <TextareaControl
+                                            label={__('Shop Features (one per line)', 'smc-viable')}
+                                            value={(shopSettings.features || []).join('\n')}
+                                            onChange={(val) => setShopSettings({
+                                                ...shopSettings,
+                                                features: val.split('\n').map((line) => line.trim()).filter(Boolean)
+                                            })}
+                                        />
+                                    </div>
+                                )}
+
+                                <h3>{__('Stages / Categories', 'smc-viable')}</h3>
+                                <div className="smc-stage-list">
+                                    {stages.map((stage, idx) => (
+                                        <div key={idx} className="smc-stage-row">
+                                            <TextControl
+                                                value={stage}
+                                                onChange={(val) => updateStage(idx, val)}
+                                                __next40pxDefaultSize
+                                                __nextHasNoMarginBottom
+                                            />
+                                            <button type="button" className="smc-inline-icon-btn smc-inline-icon-btn--danger" onClick={() => removeStage(idx)}>
+                                                <Trash2 size={14} />
+                                                <span>{__('Remove', 'smc-viable')}</span>
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                                <button type="button" className="smc-inline-icon-btn smc-inline-icon-btn--add" onClick={addStage}>
+                                    <PlusCircle size={15} />
+                                    <span>{__('Add Stage', 'smc-viable')}</span>
+                                </button>
+                            </div>
+                        );
+                    }
+
+                    return (
+                        <div className="smc-editor-section">
+                            <div className="smc-dashboard-head">
+                                <h3>{__('Scoring Rules', 'smc-viable')}</h3>
+                                <ToggleControl
+                                    label={__('Advanced (Raw JSON)', 'smc-viable')}
+                                    checked={showJsonEditor}
+                                    onChange={setShowJsonEditor}
+                                />
+                            </div>
+
+                            <TextControl
+                                label={__('Report Title', 'smc-viable')}
+                                value={dashboardTitle}
+                                onChange={setDashboardTitle}
+                            />
+
+                            {showJsonEditor ? (
+                                <TextareaControl
+                                    label={__('Raw JSON Config', 'smc-viable')}
+                                    value={JSON.stringify({ version: '1.0.0', dashboard_config: { title: dashboardTitle, rules: dashboardRules } }, null, 2)}
+                                    onChange={(val) => {
+                                        try {
+                                            const parsed = JSON.parse(val);
+                                            if (parsed.dashboard_config) {
+                                                setDashboardTitle(parsed.dashboard_config.title || dashboardTitle);
+                                                setDashboardRules(parsed.dashboard_config.rules || []);
+                                            }
+                                        } catch (_) {
+                                            // ignore invalid json while typing
+                                        }
+                                    }}
+                                    rows={16}
+                                />
+                            ) : (
+                                <div>
+                                    {dashboardRules.map((rule, idx) => (
+                                        <DashboardRuleEditor
+                                            key={idx}
+                                            rule={rule}
+                                            onChange={(newRule) => updateRule(idx, newRule)}
+                                            onRemove={() => removeRule(idx)}
+                                        />
+                                    ))}
+                                    <Button isSecondary onClick={addRule}>{__('Add Scoring Rule', 'smc-viable')}</Button>
+                                </div>
+                            )}
+                        </div>
+                    );
                 }}
             </TabPanel>
 

@@ -1,19 +1,11 @@
 import { ArrowLeft } from 'lucide-react';
 
-export default function ProductDetails({ product, onBack, addToCart, userAccess }) {
+export default function ProductDetails({ product, onBack, onProductAction, getProductAction }) {
     if (!product) return null;
 
-    const isOwned = () => {
-        if (!userAccess) return false;
-        if (product.type === 'plan') {
-            if (userAccess.plan === 'premium') return true;
-            if (userAccess.plan === 'basic' && product.plan_level === 'basic') return true;
-        }
-        // Todo: check single access when implemented in backend
-        return false;
-    };
-
-    const owned = isOwned();
+    const action = getProductAction(product);
+    const buttonLabel = action?.label || 'Add to Cart';
+    const buttonDisabled = Boolean(action?.disabled);
 
     return (
         <div className="smc-product-details fade-in">
@@ -35,15 +27,17 @@ export default function ProductDetails({ product, onBack, addToCart, userAccess 
                     <div className="details-price">${product.price}</div>
 
                     <div className="details-actions">
-                        {owned ? (
-                            <button className="smc-btn-primary disabled" disabled>Already Owned</button>
-                        ) : (
-                            <button className="smc-btn-primary" onClick={() => addToCart(product)}>Add to Cart</button>
-                        )}
+                        <button
+                            className={`smc-btn-primary ${buttonDisabled ? 'disabled' : ''}`}
+                            disabled={buttonDisabled}
+                            onClick={() => onProductAction(product)}
+                        >
+                            {buttonLabel}
+                        </button>
                     </div>
 
                     <div className="details-description">
-                        <h3>About this {product.type === 'plan' ? 'Plan' : (product.type === 'course' ? 'Module' : 'Service')}</h3>
+                        <h3>About this {product.type === 'plan' ? 'Plan' : (product.type === 'course' ? 'Module' : (product.type === 'assessment' ? 'Assessment' : 'Service'))}</h3>
                         <p>{product.long_description || product.description}</p>
                     </div>
 

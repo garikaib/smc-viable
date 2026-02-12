@@ -4,12 +4,14 @@
  */
 
 require_once __DIR__ . '/../../../../wp-load.php';
+require_once __DIR__ . '/class-plan-tiers.php';
+\SMC\Viable\Plan_Tiers::set_levels( [ 'free', 'basic', 'standard' ] );
 
 // 1. Update Quiz Levels
 update_post_meta( 1055, '_smc_quiz_plan_level', 'basic' );
-update_post_meta( 1053, '_smc_quiz_plan_level', 'premium' );
+update_post_meta( 1053, '_smc_quiz_plan_level', 'standard' );
 
-echo "Quizzes 1055 (Basic) and 1053 (Premium) updated.\n";
+echo "Quizzes 1055 (Basic) and 1053 (Standard) updated.\n";
 
 // 2. Create Products
 $products = [
@@ -24,12 +26,12 @@ $products = [
         'features' => ['Basic Assessment Report', 'Access to Foundation Training', 'Monthly Business Tips']
     ],
     [
-        'title' => 'Premium Full Access',
+        'title' => 'Standard Full Access',
         'content' => 'Complete access to all training, priority support, and deep-dive results.',
         'long_description' => 'Accelerate your growth with Premium Full Access. This comprehensive plan unlocks our entire library of advanced training modules, deep-dive analytical reports, and priority support. Ideal for scaling businesses ready to dominate their market.',
         'price' => 10,
         'type' => 'plan',
-        'level' => 'premium',
+        'level' => 'standard',
         'image' => 'https://smc-wp.ddev.site/wp-content/uploads/2026/02/daniel-thomas-HA-0i0E7sq4-unsplash.jpg',
         'features' => ['Full Viability Report', 'All Advanced Training Modules', 'Priority Support', 'Quarterly Strategy Review', 'Downloadable Templates']
     ],

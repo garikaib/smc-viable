@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from '@wordpress/element';
-import { LayoutDashboard, Users, BookOpen, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, UserCircle2, LogOut } from 'lucide-react';
 import Dashboard from './Dashboard';
 import StudentManager from './StudentManager';
+import InstructorProfileBuilder from './InstructorProfileBuilder';
 import { gsap } from 'gsap';
 import './style.scss';
 
@@ -12,7 +13,8 @@ export default function App() {
 
     const tabs = [
         { id: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard },
-        { id: 'students', label: 'STUDENTS', icon: Users }
+        { id: 'students', label: 'STUDENTS', icon: Users },
+        { id: 'profile', label: 'PROFILE', icon: UserCircle2 }
     ];
 
     useEffect(() => {
@@ -32,7 +34,7 @@ export default function App() {
             <header className="smc-instructor-header" ref={headerRef}>
                 <div className="smc-header-container">
                     <div className="smc-brand">
-                        <span className="smc-badge-mini">BOUTIQUE LMS</span>
+                        <span className="smc-badge-mini">SMC TRAINING CENTRE</span>
                         <h1 className="smc-premium-heading text-2xl">Instructor Hub</h1>
                     </div>
 
@@ -62,8 +64,9 @@ export default function App() {
             </header>
 
             <main className="smc-instructor-content">
-                {currentTab === 'dashboard' && <Dashboard />}
+                {currentTab === 'dashboard' && <Dashboard onOpenProfile={() => setCurrentTab('profile')} />}
                 {currentTab === 'students' && <StudentManager />}
+                {currentTab === 'profile' && <InstructorProfileBuilder />}
             </main>
         </div>
     );

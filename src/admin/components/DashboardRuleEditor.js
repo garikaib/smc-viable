@@ -7,6 +7,7 @@ import {
     BaseControl
 } from '@wordpress/components';
 import { useState } from '@wordpress/element';
+import { Trash2 } from 'lucide-react';
 
 /**
  * Dashboard Rule Editor Component.
@@ -57,6 +58,7 @@ export default function DashboardRuleEditor({ rule, onChange, onRemove }) {
                         {condition_text || 'New Rule'}
                     </h3>
                     <button className="btn btn-ghost btn-xs text-error" onClick={onRemove}>
+                        <Trash2 size={13} />
                         Remove
                     </button>
                 </div>

@@ -1,11 +1,15 @@
 import { useState, useEffect } from '@wordpress/element';
-import { Users, Mail, Plus, X, BookOpen, Award, BarChart2, Calendar } from 'lucide-react';
+import { Mail, UserPlus, Pencil, X, BookOpen, Award, BarChart2, Calendar, CheckCircle, AlertCircle } from 'lucide-react';
 
 export default function StudentManager() {
     const [students, setStudents] = useState([]);
     const [courses, setCourses] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isInviting, setIsInviting] = useState(false);
+    const [isAdding, setIsAdding] = useState(false);
+    const [editingStudent, setEditingStudent] = useState(null);
+    const [savingStudent, setSavingStudent] = useState(false);
+    const [statusSavingId, setStatusSavingId] = useState(null);
 
     // Detail View State
     const [selectedStudent, setSelectedStudent] = useState(null);
@@ -17,6 +21,12 @@ export default function StudentManager() {
     const [selectedCourseId, setSelectedCourseId] = useState('');
     const [inviteMessage, setInviteMessage] = useState('');
     const [sending, setSending] = useState(false);
+    const [notice, setNotice] = useState(null);
+    const [studentForm, setStudentForm] = useState({
+        name: '',
+        email: '',
+        itemId: ''
+    });
 
     const fetchData = async () => {
         try {
@@ -30,7 +40,14 @@ export default function StudentManager() {
 
             setStudents(studentData);
             setCourses(courseData);
-            if (courseData.length > 0) setSelectedCourseId(courseData[0].id);
+            if (courseData.length > 0) {
+                setSelectedCourseId((prev) => {
+                    const hasCurrent = courseData.some((course) => String(course.id) === String(prev));
+                    return hasCurrent ? prev : String(courseData[0].id);
+                });
+            } else {
+                setSelectedCourseId('');
+            }
         } catch (err) {
             console.error("Failed to load data", err);
         } finally {
@@ -58,6 +75,147 @@ export default function StudentManager() {
         fetchData();
     }, []);
 
+    useEffect(() => {
+        if (!notice) return undefined;
+        const timeout = setTimeout(() => setNotice(null), notice.duration || 3200);
+        return () => clearTimeout(timeout);
+    }, [notice]);
+
+    const normalizeErrorMessage = (input) => {
+        if (!input) return 'Something went wrong while processing your request.';
+        const text = String(input).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+        if (!text) return 'Something went wrong while processing your request.';
+        if (/critical error on this website/i.test(text)) {
+            return 'Server error while processing your request. Please try again or contact support.';
+        }
+        return text;
+    };
+
+    const resetStudentForm = () => {
+        setStudentForm({
+            name: '',
+            email: '',
+            itemId: ''
+        });
+    };
+
+    const openAddModal = () => {
+        resetStudentForm();
+        setEditingStudent(null);
+        setIsAdding(true);
+    };
+
+    const openEditModal = (student) => {
+        setStudentForm({
+            name: student?.name || '',
+            email: student?.email || '',
+            itemId: ''
+        });
+        setEditingStudent(student);
+        setIsAdding(false);
+    };
+
+    const closeStudentModal = () => {
+        setIsAdding(false);
+        setEditingStudent(null);
+        resetStudentForm();
+    };
+
+    const handleStudentSave = async (e) => {
+        e.preventDefault();
+        if (!studentForm.email) return;
+
+        const isEdit = Boolean(editingStudent?.id);
+        const endpoint = isEdit
+            ? `${wpApiSettings.root}smc/v1/instructor/students/${editingStudent.id}`
+            : `${wpApiSettings.root}smc/v1/instructor/students`;
+
+        setSavingStudent(true);
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-WP-Nonce': wpApiSettings.nonce
+                },
+                body: JSON.stringify({
+                    name: studentForm.name,
+                    email: studentForm.email,
+                    item_id: studentForm.itemId || null
+                })
+            });
+
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(normalizeErrorMessage(result?.message || result?.error || 'Failed to save student.'));
+            }
+
+            setNotice({
+                status: 'success',
+                title: isEdit ? 'Student Updated' : 'Student Added',
+                text: isEdit ? 'Student details were updated successfully.' : 'Student has been added successfully.',
+                duration: 3200
+            });
+            closeStudentModal();
+            fetchData();
+        } catch (err) {
+            console.error("Student save failed", err);
+            setNotice({
+                status: 'error',
+                title: isEdit ? 'Update Failed' : 'Add Failed',
+                text: normalizeErrorMessage(err?.message || 'Failed to save student.'),
+                duration: 3800
+            });
+        } finally {
+            setSavingStudent(false);
+        }
+    };
+
+    const handleToggleDisabled = async (student) => {
+        if (!student?.id) return;
+
+        const targetDisabled = !Boolean(student.disabled);
+        setStatusSavingId(student.id);
+
+        try {
+            const response = await fetch(`${wpApiSettings.root}smc/v1/instructor/students/${student.id}/status`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-WP-Nonce': wpApiSettings.nonce
+                },
+                body: JSON.stringify({
+                    disabled: targetDisabled
+                })
+            });
+
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(normalizeErrorMessage(result?.message || result?.error || 'Failed to update student status.'));
+            }
+
+            setNotice({
+                status: 'success',
+                title: targetDisabled ? 'Student Disabled' : 'Student Enabled',
+                text: targetDisabled
+                    ? `${student.email} can no longer sign in.`
+                    : `${student.email} can sign in again.`,
+                duration: 3200
+            });
+            fetchData();
+        } catch (err) {
+            console.error("Status update failed", err);
+            setNotice({
+                status: 'error',
+                title: 'Status Update Failed',
+                text: normalizeErrorMessage(err?.message || 'Failed to update student status.'),
+                duration: 3800
+            });
+        } finally {
+            setStatusSavingId(null);
+        }
+    };
+
     const handleInvite = async (e) => {
         e.preventDefault();
         if (!inviteEmail || !selectedCourseId) return;
@@ -76,15 +234,39 @@ export default function StudentManager() {
                 })
             });
 
-            await response.json();
-            alert('Invitation sent!');
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(normalizeErrorMessage(result?.message || result?.error || 'Failed to send invitation.'));
+            }
+
+            const inviteResults = result?.results || {};
+            if (inviteResults.error) {
+                throw new Error(normalizeErrorMessage(inviteResults.error));
+            }
+
+            const inviteStatus = inviteResults[inviteEmail];
+            if (typeof inviteStatus === 'string' && /(failed|error|invalid)/i.test(inviteStatus)) {
+                throw new Error(normalizeErrorMessage(inviteStatus));
+            }
+
+            setNotice({
+                status: 'success',
+                title: 'Invitation Sent',
+                text: `${inviteEmail} has been invited successfully.`,
+                duration: 3200
+            });
             setInviteEmail('');
             setInviteMessage('');
             setIsInviting(false);
             fetchData();
         } catch (err) {
             console.error("Invite failed", err);
-            alert("Failed to send invitation.");
+            setNotice({
+                status: 'error',
+                title: 'Invite Failed',
+                text: normalizeErrorMessage(err?.message || "Failed to send invitation."),
+                duration: 3800
+            });
         } finally {
             setSending(false);
         }
@@ -99,21 +281,96 @@ export default function StudentManager() {
                     <span className="smc-premium-badge">DIRECTORY</span>
                     <h2 className="smc-premium-heading text-3xl mt-2">Student Management</h2>
                 </div>
-                <button
-                    className="smc-btn-primary"
-                    onClick={() => setIsInviting(true)}
-                >
-                    <Mail size={18} className="mr-2" /> Invite Student
-                </button>
+                <div className="flex flex-wrap items-center gap-3 justify-end">
+                    <button
+                        className="smc-btn-secondary"
+                        onClick={openAddModal}
+                    >
+                        <UserPlus size={17} className="mr-2" /> Add Student
+                    </button>
+                    <button
+                        className="smc-btn-primary"
+                        onClick={() => setIsInviting(true)}
+                    >
+                        <Mail size={18} className="mr-2" /> Invite Student
+                    </button>
+                </div>
             </header>
+
+            {(isAdding || editingStudent) && (
+                <div className="smc-modal-overlay">
+                    <div className="smc-modal smc-invite-modal" style={{ maxWidth: '620px' }}>
+                        <div className="flex justify-between items-center mb-2">
+                            <h3>{editingStudent ? 'Edit Student' : 'Add Student'}</h3>
+                            <button onClick={closeStudentModal} className="smc-invite-close-btn" aria-label="Close student form">
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <p className="smc-student-modal-subtitle">
+                            {editingStudent
+                                ? 'Update student details and optionally assign a new course or plan.'
+                                : 'Create a student manually and assign a course or plan immediately.'}
+                        </p>
+                        <form onSubmit={handleStudentSave}>
+                            <div className="smc-form-group">
+                                <label>Full Name</label>
+                                <input
+                                    type="text"
+                                    required
+                                    placeholder="Student Name"
+                                    className="smc-invite-input"
+                                    value={studentForm.name}
+                                    onChange={(e) => setStudentForm((prev) => ({ ...prev, name: e.target.value }))}
+                                    autoFocus
+                                />
+                            </div>
+
+                            <div className="smc-form-group">
+                                <label>Email Address</label>
+                                <input
+                                    type="email"
+                                    required
+                                    placeholder="student@example.com"
+                                    className="smc-invite-input"
+                                    value={studentForm.email}
+                                    onChange={(e) => setStudentForm((prev) => ({ ...prev, email: e.target.value }))}
+                                />
+                            </div>
+
+                            <div className="smc-form-group">
+                                <label>Assign Course or Plan (Optional)</label>
+                                <select
+                                    className="smc-invite-input"
+                                    value={studentForm.itemId}
+                                    onChange={(e) => setStudentForm((prev) => ({ ...prev, itemId: e.target.value }))}
+                                >
+                                    <option value="">No assignment</option>
+                                    {courses.map((c) => (
+                                        <option key={c.id} value={c.id}>{c.title}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="smc-modal-actions">
+                                <button type="button" onClick={closeStudentModal} className="smc-invite-btn smc-invite-btn-secondary">Cancel</button>
+                                <button type="submit" className="smc-invite-btn smc-invite-btn-primary" disabled={savingStudent}>
+                                    {savingStudent ? (editingStudent ? 'Saving...' : 'Adding...') : (editingStudent ? 'Save Changes' : 'Add Student')}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
 
             {/* Invite Modal */}
             {isInviting && (
                 <div className="smc-modal-overlay">
-                    <div className="smc-modal" style={{ maxWidth: '500px' }}>
-                        <div className="flex justify-between items-center mb-4">
+                    <div className="smc-modal smc-invite-modal" style={{ maxWidth: '560px' }}>
+                        <div className="flex justify-between items-center mb-6">
                             <h3>Invite Student</h3>
-                            <button onClick={() => setIsInviting(false)} className="text-gray-400 hover:text-white"><X size={20} /></button>
+                            <button onClick={() => setIsInviting(false)} className="smc-invite-close-btn" aria-label="Close invite form">
+                                <X size={18} />
+                            </button>
                         </div>
                         <form onSubmit={handleInvite}>
                             <div className="smc-form-group">
@@ -122,6 +379,7 @@ export default function StudentManager() {
                                     type="email"
                                     required
                                     placeholder="student@example.com"
+                                    className="smc-invite-input"
                                     value={inviteEmail}
                                     onChange={(e) => setInviteEmail(e.target.value)}
                                     autoFocus
@@ -129,11 +387,13 @@ export default function StudentManager() {
                             </div>
 
                             <div className="smc-form-group">
-                                <label>Enroll in Course</label>
+                                <label>Enroll in Course or Plan</label>
                                 <select
+                                    className="smc-invite-input"
                                     value={selectedCourseId}
                                     onChange={(e) => setSelectedCourseId(e.target.value)}
                                 >
+                                    <option value="" disabled>Select an option...</option>
                                     {courses.map(c => (
                                         <option key={c.id} value={c.id}>{c.title}</option>
                                     ))}
@@ -143,7 +403,7 @@ export default function StudentManager() {
                             <div className="smc-form-group">
                                 <label>Personal Message (Optional)</label>
                                 <textarea
-                                    className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white smc-input"
+                                    className="smc-invite-input smc-invite-textarea"
                                     rows="3"
                                     value={inviteMessage}
                                     onChange={(e) => setInviteMessage(e.target.value)}
@@ -152,12 +412,27 @@ export default function StudentManager() {
                             </div>
 
                             <div className="smc-modal-actions">
-                                <button type="button" onClick={() => setIsInviting(false)} className="smc-btn-secondary">Cancel</button>
-                                <button type="submit" className="smc-btn-primary" disabled={sending}>
+                                <button type="button" onClick={() => setIsInviting(false)} className="smc-invite-btn smc-invite-btn-secondary">Cancel</button>
+                                <button type="submit" className="smc-invite-btn smc-invite-btn-primary" disabled={sending || courses.length === 0}>
                                     {sending ? 'Sending...' : 'Send Invitation'}
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {notice && (
+                <div className="smc-toaster smc-instructor-toaster">
+                    <div className={`smc-toast ${notice.status}`}>
+                        <div className="toast-icon">
+                            {notice.status === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+                        </div>
+                        <div className="toast-content">
+                            <h4>{notice.title}</h4>
+                            <p>{notice.text}</p>
+                        </div>
+                        <div className="toast-timer" style={{ animationDuration: `${notice.duration || 3200}ms` }}></div>
                     </div>
                 </div>
             )}
@@ -322,6 +597,14 @@ export default function StudentManager() {
                                                     {student.completed_count} Completed
                                                 </span>
                                             )}
+                                            {student.disabled && (
+                                                <span className="inline-flex w-fit items-center px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest bg-red-500/10 text-red-500 border border-red-500/20">
+                                                    Disabled
+                                                </span>
+                                            )}
+                                            <span className="inline-flex w-fit items-center px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                                                Plan: {student.plan || 'free'}
+                                            </span>
                                             {student.enrollment_count > 0 && (
                                                 <span className="inline-flex w-fit items-center px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest bg-blue-500/10 text-blue-400 border border-blue-500/20">
                                                     {student.enrollment_count} Active
@@ -336,12 +619,29 @@ export default function StudentManager() {
                                         Last active: {student.last_active ? new Date(student.last_active).toLocaleDateString() : 'Never'}
                                     </td>
                                     <td className="p-6 text-right">
-                                        <button
-                                            onClick={() => fetchStudentDetails(student.id)}
-                                            className="smc-btn-secondary text-xs py-1 px-3 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        >
-                                            View Details
-                                        </button>
+                                        <div className="inline-flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button
+                                                onClick={() => openEditModal(student)}
+                                                className="smc-btn-secondary text-xs py-1 px-3"
+                                            >
+                                                <Pencil size={12} className="mr-1" /> Edit
+                                            </button>
+                                            <button
+                                                onClick={() => fetchStudentDetails(student.id)}
+                                                className="smc-btn-secondary text-xs py-1 px-3"
+                                            >
+                                                View Details
+                                            </button>
+                                            <button
+                                                onClick={() => handleToggleDisabled(student)}
+                                                className={`smc-btn-secondary text-xs py-1 px-3 ${student.disabled ? 'smc-status-enable' : 'smc-status-disable'}`}
+                                                disabled={statusSavingId === student.id}
+                                            >
+                                                {statusSavingId === student.id
+                                                    ? 'Saving...'
+                                                    : (student.disabled ? 'Enable' : 'Disable')}
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))

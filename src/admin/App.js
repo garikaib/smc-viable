@@ -58,11 +58,16 @@ export default function App() {
     };
 
     return (
-        <div className="wrap smc-hub-admin">
-            <h1 className="wp-heading-inline">{__('SMC Hub', 'smc-viable')}</h1>
-            <hr className="wp-header-end" />
+        <div className="smc-hub-admin">
+            <section className="smc-admin-hero">
+                <div>
+                    <p className="smc-admin-eyebrow">{__('SMC Assessment Center', 'smc-viable')}</p>
+                    <h1>{__('Visual Quiz Builder', 'smc-viable')}</h1>
+                    <p>{__('Design, configure and publish assessment journeys with stronger control over scoring, plan access, and report behavior.', 'smc-viable')}</p>
+                </div>
+            </section>
 
-            <div style={{ marginTop: '20px', width: '100%' }}>
+            <div className="smc-admin-shell">
                 {/* Leads View */}
                 {view === 'leads' && <LeadList />}
 
@@ -88,4 +93,3 @@ export default function App() {
         </div>
     );
 }
-

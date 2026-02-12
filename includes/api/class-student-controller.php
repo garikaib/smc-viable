@@ -88,40 +88,76 @@ class Student_Controller extends WP_REST_Controller {
 	 */
 	public function get_dashboard( $request ) {
 		$user_id = get_current_user_id();
-        
-        // Pass true to include locked courses (upsell)
-        $accessible_courses = Enrollment_Manager::get_accessible_courses( $user_id, true );
+        Enrollment_Manager::reconcile_user_purchase_enrollments( $user_id );
+
+        // Build dashboard from explicit active/completed enrollments.
+        // This keeps Student Portal aligned with actual enrollment records.
         $courses_data = [];
+        $enrollments = Enrollment_Manager::get_user_enrollments( $user_id );
+        // ... (Keep existing logic)
+        $enrolled_statuses = [];
+        $enrolled_sources = [];
+        $enrolled_meta = [];
 
-        foreach ( $accessible_courses as $course ) {
-            // Get Progress
-            $progress_data = LMS_Progress::get_full_course_progress( $user_id, $course->ID );
-            
-            // Determine status
-            $status = 'not_started';
-            if ( $progress_data['overall_percent'] > 0 ) {
-                $status = 'in_progress';
-            }
-            if ( $progress_data['overall_percent'] >= 100 || Enrollment_Manager::is_enrolled( $user_id, $course->ID ) && $this->is_manually_completed( $user_id, $course->ID ) ) {
-                $status = 'completed';
+        foreach ( $enrollments as $enrollment ) {
+            $course_id = isset( $enrollment->course_id ) ? (int) $enrollment->course_id : 0;
+            $status    = isset( $enrollment->status ) ? (string) $enrollment->status : '';
+
+            if ( $course_id <= 0 || ! in_array( $status, [ 'active', 'completed' ], true ) ) {
+                continue;
             }
 
-            $courses_data[] = [
-                'id' => $course->ID,
-                'title' => $course->post_title,
-                'slug' => $course->post_name,
-                'thumbnail' => get_the_post_thumbnail_url( $course->ID, 'medium' ),
-                'progress' => $progress_data['overall_percent'],
-                'status' => $status,
-                'access_source' => $course->access_source_label ?? 'Enrolled',
-                'lessons_completed' => $progress_data['completed_count'],
-                'total_lessons' => $progress_data['total_lessons'],
-                'is_locked' => $course->is_locked ?? false,
-            ];
+            $enrolled_statuses[ $course_id ] = $status;
+            $enrolled_sources[ $course_id ]  = isset( $enrollment->source ) ? (string) $enrollment->source : 'manual';
+            $raw_meta = isset( $enrollment->source_meta ) ? (string) $enrollment->source_meta : '';
+            $decoded_meta = json_decode( $raw_meta, true );
+            $enrolled_meta[ $course_id ] = is_array( $decoded_meta ) ? $decoded_meta : [];
+        }
+
+        if ( ! empty( $enrolled_statuses ) ) {
+            $courses = get_posts( [
+                'post_type'      => 'smc_training',
+                'post_status'    => [ 'publish', 'private' ],
+                'post__in'       => array_map( 'intval', array_keys( $enrolled_statuses ) ),
+                'orderby'        => 'post__in',
+                'posts_per_page' => -1,
+            ] );
+
+            foreach ( $courses as $course ) {
+                $progress_data = LMS_Progress::get_full_course_progress( $user_id, (int) $course->ID );
+
+                $progress = isset( $progress_data['overall_percent'] ) ? (int) $progress_data['overall_percent'] : 0;
+                $status = 'not_started';
+                if ( $progress > 0 ) {
+                    $status = 'in_progress';
+                }
+
+                $enrollment_status = $enrolled_statuses[ (int) $course->ID ] ?? 'active';
+                if ( $progress >= 100 || 'completed' === $enrollment_status ) {
+                    $status = 'completed';
+                }
+
+                $courses_data[] = [
+                    'id'                => (int) $course->ID,
+                    'title'             => $this->resolve_course_display_title(
+                        (int) $course->ID,
+                        $enrolled_sources[ (int) $course->ID ] ?? 'manual',
+                        $enrolled_meta[ (int) $course->ID ] ?? []
+                    ),
+                    'slug'              => $course->post_name,
+                    'thumbnail'         => get_the_post_thumbnail_url( $course->ID, 'medium' ),
+                    'progress'          => $progress,
+                    'status'            => $status,
+                    'access_source'     => $this->get_access_source_label( $enrolled_sources[ (int) $course->ID ] ?? 'manual' ),
+                    'lessons_completed' => isset( $progress_data['completed_count'] ) ? (int) $progress_data['completed_count'] : 0,
+                    'total_lessons'     => isset( $progress_data['total_lessons'] ) ? (int) $progress_data['total_lessons'] : 0,
+                    'is_locked'         => false,
+                ];
+            }
         }
 
         // Add Plan Info
-        $plan = get_user_meta( $user_id, '_smc_user_plan', true ) ?: 'free';
+        $plan = Enrollment_Manager::resolve_user_plan( $user_id );
         // Add Premium Courses Upsell (if on free/basic)
         // Find all plan-courses higher than current plan
         // ... (Optional for now, straightforward logic)
@@ -133,18 +169,34 @@ class Student_Controller extends WP_REST_Controller {
         ] );
 	}
 
-    private function is_manually_completed( $user_id, $course_id ) {
-        // Enrollment manager handles access/status check more robustly
-        // Here just strictly check if status is completed in DB if needed, 
-        // but get_full_course_progress returns percent based on lessons.
-        // Manual completion sets DB status 'completed'. 
-        // We really should trust DB status first.
-        global $wpdb;
-        $status = $wpdb->get_var( $wpdb->prepare(
-            "SELECT status FROM {$wpdb->prefix}smc_enrollments WHERE user_id = %d AND course_id = %d",
-            $user_id, $course_id
-        ) );
-        return 'completed' === $status;
+    private function get_access_source_label( string $source ): string {
+        switch ( $source ) {
+            case 'purchase':
+                return 'Purchased';
+            case 'invitation':
+                return 'Invited';
+            case 'quiz':
+                return 'Via Assessment';
+            case 'manual':
+                return 'Assigned';
+            default:
+                return 'Enrolled';
+        }
+    }
+
+    private function resolve_course_display_title( int $course_id, string $source, array $source_meta ): string {
+        if ( 'purchase' === $source ) {
+            $product_id = isset( $source_meta['product_id'] ) ? (int) $source_meta['product_id'] : 0;
+            if ( $product_id > 0 ) {
+                $product = get_post( $product_id );
+                if ( $product && 'smc_product' === $product->post_type && ! empty( $product->post_title ) ) {
+                    return $product->post_title;
+                }
+            }
+        }
+
+        $course = get_post( $course_id );
+        return $course && ! empty( $course->post_title ) ? $course->post_title : __( 'Course', 'smc-viable' );
     }
 
     /**
