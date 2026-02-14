@@ -162,7 +162,17 @@ export default function QuestionEditor({ question, onChange, onRemove, onClone, 
 
     const renderChoiceEditor = () => (
         <div className="form-control w-full md:col-span-2 p-4 bg-base-200 rounded-lg smc-question-options">
-            <label className="label font-bold"><span className="label-text">Choices & Points</span></label>
+            <label className="label font-bold mb-2">
+                <span className="label-text">Choices & Points</span>
+            </label>
+
+            {/* Header Labels */}
+            <div className="flex gap-2 mb-1 px-1 opacity-60 uppercase text-[10px] font-bold tracking-wider">
+                <div className="flex-1">Choice Text (Label)</div>
+                <div className="w-20 text-center">Points</div>
+                <div className="w-8"></div>
+            </div>
+
             {(safeQuestion.choices || []).map((choice, index) => (
                 <div key={choice.id || index} className="flex gap-2 mb-2 items-center">
                     <input
@@ -170,20 +180,22 @@ export default function QuestionEditor({ question, onChange, onRemove, onClone, 
                         className="input input-bordered input-sm flex-1"
                         value={choice.label || ''}
                         onChange={(e) => updateChoice(index, { label: e.target.value })}
-                        placeholder="Option Text"
+                        placeholder="e.g. Strongly Agree"
                     />
                     <input
                         type="number"
-                        className="input input-bordered input-sm w-28"
+                        className="input input-bordered input-sm w-20 text-center"
                         value={choice.points ?? 0}
                         onChange={(e) => updateChoice(index, { points: Number(e.target.value || 0) })}
                     />
-                    <button className="btn btn-square btn-sm btn-ghost text-error" onClick={() => removeChoice(index)}>
+                    <button className="btn btn-square btn-sm btn-ghost text-error" onClick={() => removeChoice(index)} title="Remove Choice">
                         &times;
                     </button>
                 </div>
             ))}
-            <button className="btn btn-sm btn-secondary btn-outline" onClick={addChoice}>+ Add Choice</button>
+            <div className="mt-2">
+                <button className="btn btn-sm btn-secondary btn-outline" onClick={addChoice}>+ Add Choice</button>
+            </div>
         </div>
     );
 
@@ -232,23 +244,37 @@ export default function QuestionEditor({ question, onChange, onRemove, onClone, 
         };
         return (
             <div className="form-control w-full md:col-span-2 p-4 bg-base-200 rounded-lg">
-                <label className="label font-bold"><span className="label-text">Ranking Items (top to bottom is correct order)</span></label>
+                <label className="label font-bold mb-2">
+                    <span className="label-text">Ranking Items</span>
+                </label>
+                <div className="mb-2 opacity-60 uppercase text-[10px] font-bold tracking-wider px-8">
+                    Item Text (Top is 1st)
+                </div>
                 {items.map((item, index) => (
                     <div key={item.id || index} className="flex gap-2 mb-2 items-center">
-                        <span className="text-xs opacity-60 w-6">{index + 1}</span>
+                        <span className="text-xs opacity-60 w-6 text-right font-bold">{index + 1}.</span>
                         <input
                             type="text"
                             className="input input-bordered input-sm flex-1"
                             value={item.label || ''}
+                            placeholder={`Ranked Item ${index + 1}`}
                             onChange={(e) => {
                                 const next = [...items];
                                 next[index] = { ...next[index], label: e.target.value };
                                 updateQuestion('ranking', { ...safeQuestion.ranking, items: next, correct_order: order.length ? order : next.map((x) => x.id) });
                             }}
                         />
+                        <button className="btn btn-square btn-sm btn-ghost text-error" onClick={() => {
+                            const next = items.filter((_, i) => i !== index);
+                            updateQuestion('ranking', { ...safeQuestion.ranking, items: next, correct_order: next.map(x => x.id) });
+                        }}>
+                            &times;
+                        </button>
                     </div>
                 ))}
-                <button className="btn btn-sm btn-secondary btn-outline" onClick={addItem}>+ Add Ranking Item</button>
+                <div className="mt-2">
+                    <button className="btn btn-sm btn-secondary btn-outline" onClick={addItem}>+ Add Ranking Item</button>
+                </div>
             </div>
         );
     };
@@ -258,12 +284,19 @@ export default function QuestionEditor({ question, onChange, onRemove, onClone, 
         const addPair = () => updateQuestion('matching', { ...safeQuestion.matching, pairs: [...pairs, { id: uid('pair'), left: '', right: '' }] });
         return (
             <div className="form-control w-full md:col-span-2 p-4 bg-base-200 rounded-lg">
-                <label className="label font-bold"><span className="label-text">Matching Pairs</span></label>
+                <label className="label font-bold mb-2">
+                    <span className="label-text">Matching Pairs</span>
+                </label>
+                <div className="grid grid-cols-12 gap-2 mb-1 px-1 opacity-60 uppercase text-[10px] font-bold tracking-wider">
+                    <div className="col-span-5">Term / Key</div>
+                    <div className="col-span-6">Correct Match</div>
+                    <div className="col-span-1"></div>
+                </div>
                 {pairs.map((pair, index) => (
-                    <div key={pair.id || index} className="grid grid-cols-2 gap-2 mb-2">
+                    <div key={pair.id || index} className="grid grid-cols-12 gap-2 mb-2 items-center">
                         <input
                             type="text"
-                            className="input input-bordered input-sm"
+                            className="input input-bordered input-sm col-span-5"
                             value={pair.left || ''}
                             onChange={(e) => {
                                 const next = [...pairs];
@@ -274,7 +307,7 @@ export default function QuestionEditor({ question, onChange, onRemove, onClone, 
                         />
                         <input
                             type="text"
-                            className="input input-bordered input-sm"
+                            className="input input-bordered input-sm col-span-6"
                             value={pair.right || ''}
                             onChange={(e) => {
                                 const next = [...pairs];
@@ -283,9 +316,16 @@ export default function QuestionEditor({ question, onChange, onRemove, onClone, 
                             }}
                             placeholder="Correct match"
                         />
+                        <button className="btn btn-square btn-sm btn-ghost text-error col-span-1" onClick={() => {
+                            updateQuestion('matching', { ...safeQuestion.matching, pairs: pairs.filter((_, i) => i !== index) });
+                        }}>
+                            &times;
+                        </button>
                     </div>
                 ))}
-                <button className="btn btn-sm btn-secondary btn-outline" onClick={addPair}>+ Add Pair</button>
+                <div className="mt-2">
+                    <button className="btn btn-sm btn-secondary btn-outline" onClick={addPair}>+ Add Pair</button>
+                </div>
             </div>
         );
     };
@@ -298,12 +338,23 @@ export default function QuestionEditor({ question, onChange, onRemove, onClone, 
         });
         return (
             <div className="form-control w-full md:col-span-2 p-4 bg-base-200 rounded-lg">
-                <label className="label font-bold"><span className="label-text">True / False Statements</span></label>
+                <label className="label font-bold mb-2">
+                    <span className="label-text">True / False Statements</span>
+                </label>
+
+                {/* Header Labels */}
+                <div className="grid grid-cols-12 gap-2 mb-1 px-1 opacity-60 uppercase text-[10px] font-bold tracking-wider">
+                    <div className="col-span-6">Statement Text</div>
+                    <div className="col-span-2 text-center">Correct</div>
+                    <div className="col-span-3 text-center">Points (Correct/Wrong)</div>
+                    <div className="col-span-1"></div>
+                </div>
+
                 {statements.map((statement, index) => (
                     <div key={statement.id || index} className="grid grid-cols-12 gap-2 mb-2 items-center">
                         <input
                             type="text"
-                            className="input input-bordered input-sm col-span-7"
+                            className="input input-bordered input-sm col-span-6"
                             value={statement.text || ''}
                             onChange={(e) => {
                                 const next = [...statements];
@@ -324,17 +375,30 @@ export default function QuestionEditor({ question, onChange, onRemove, onClone, 
                             <option value="true">True</option>
                             <option value="false">False</option>
                         </select>
-                        <input
-                            type="number"
-                            className="input input-bordered input-sm col-span-2"
-                            value={statement.points_correct ?? 1}
-                            onChange={(e) => {
-                                const next = [...statements];
-                                next[index] = { ...next[index], points_correct: Number(e.target.value || 0) };
-                                updateQuestion('matrix', { ...safeQuestion.matrix, statements: next });
-                            }}
-                            placeholder="Points"
-                        />
+                        <div className="col-span-3 flex gap-1">
+                            <input
+                                type="number"
+                                className="input input-bordered input-sm w-full text-center"
+                                value={statement.points_correct ?? 1}
+                                title="Points if answer matches Correct/Incorrect"
+                                onChange={(e) => {
+                                    const next = [...statements];
+                                    next[index] = { ...next[index], points_correct: Number(e.target.value || 0) };
+                                    updateQuestion('matrix', { ...safeQuestion.matrix, statements: next });
+                                }}
+                            />
+                            <input
+                                type="number"
+                                className="input input-bordered input-sm w-full text-center opacity-70"
+                                value={statement.points_incorrect ?? 0}
+                                title="Optional points if answer does NOT match (distractor points)"
+                                onChange={(e) => {
+                                    const next = [...statements];
+                                    next[index] = { ...next[index], points_incorrect: Number(e.target.value || 0) };
+                                    updateQuestion('matrix', { ...safeQuestion.matrix, statements: next });
+                                }}
+                            />
+                        </div>
                         <button
                             className="btn btn-square btn-sm btn-ghost text-error col-span-1"
                             onClick={() => updateQuestion('matrix', { ...safeQuestion.matrix, statements: statements.filter((_, i) => i !== index) })}
@@ -343,7 +407,9 @@ export default function QuestionEditor({ question, onChange, onRemove, onClone, 
                         </button>
                     </div>
                 ))}
-                <button className="btn btn-sm btn-secondary btn-outline" onClick={addStatement}>+ Add Statement</button>
+                <div className="mt-2">
+                    <button className="btn btn-sm btn-secondary btn-outline" onClick={addStatement}>+ Add Statement</button>
+                </div>
             </div>
         );
     };
