@@ -1,6 +1,6 @@
 import { __ } from '@wordpress/i18n';
-import { Button, Spinner, Notice, TextControl } from '@wordpress/components';
-import { useState, useEffect, useRef, useMemo } from '@wordpress/element';
+import { Button, Spinner, Notice } from '@wordpress/components';
+import { useState, useEffect, useRef } from '@wordpress/element';
 import { Copy, Check, Pencil, Trash2 } from 'lucide-react';
 import { fetchQuizzes, exportQuizzes, importQuizzes, deleteQuiz, migrateQuizzes } from '../utils/api';
 
@@ -9,7 +9,6 @@ export default function QuizList({ onEdit, onCreate }) {
     const [isLoading, setIsLoading] = useState(true);
     const [isProcessing, setIsProcessing] = useState(false);
     const [notice, setNotice] = useState(null);
-    const [search, setSearch] = useState('');
     const [copyToast, setCopyToast] = useState('');
     const [copiedQuizId, setCopiedQuizId] = useState(null);
     const fileInputRef = useRef(null);
@@ -25,12 +24,6 @@ export default function QuizList({ onEdit, onCreate }) {
     useEffect(() => {
         loadQuizzes();
     }, []);
-
-    const filteredQuizzes = useMemo(() => {
-        const term = search.trim().toLowerCase();
-        if (!term) return quizzes;
-        return quizzes.filter((q) => (q.title?.rendered || '').toLowerCase().includes(term));
-    }, [quizzes, search]);
 
     const handleExport = async () => {
         setIsProcessing(true);
@@ -149,27 +142,19 @@ export default function QuizList({ onEdit, onCreate }) {
             </div>
 
             <div className="smc-library-toolbar">
-                <TextControl
-                    className="smc-search"
-                    label={__('Search assessments', 'smc-viable')}
-                    value={search}
-                    onChange={setSearch}
-                    placeholder={__('Type a title...', 'smc-viable')}
-                />
                 <div className="smc-library-stats">
-                    <span>{filteredQuizzes.length} {__('results', 'smc-viable')}</span>
-                    <span>{quizzes.length} {__('total', 'smc-viable')}</span>
+                    <span>{quizzes.length} {__('total assessments', 'smc-viable')}</span>
                 </div>
             </div>
 
-            {filteredQuizzes.length === 0 ? (
+            {quizzes.length === 0 ? (
                 <div className="smc-empty-state">
                     <h3>{__('No assessments found', 'smc-viable')}</h3>
-                    <p>{__('Try another search term or create a new assessment.', 'smc-viable')}</p>
+                    <p>{__('Create a new assessment to get started.', 'smc-viable')}</p>
                 </div>
             ) : (
                 <div className="smc-quiz-grid">
-                    {filteredQuizzes.map((quiz, index) => (
+                    {quizzes.map((quiz, index) => (
                         <article key={quiz.id} className="smc-quiz-card" style={{ '--smc-stagger': index }}>
                             <header>
                                 <h3>{quiz.title?.rendered || __('Untitled', 'smc-viable')}</h3>

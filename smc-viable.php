@@ -109,6 +109,7 @@ final class SMC_Quiz_Plugin {
         add_filter( 'login_message', [ $this, 'inject_disabled_login_notice' ] );
         add_action( 'admin_init', [ $this, 'restrict_student_admin_access' ] );
         add_filter( 'show_admin_bar', [ $this, 'filter_student_admin_bar' ] );
+        add_action( 'wp_before_admin_bar_render', [ $this, 'remove_frontend_adminbar_search' ], 999 );
 		add_action( 'user_register', [ $this, 'claim_guest_assessment_reports' ] );
 		add_filter( 'query_vars', [ $this, 'register_shop_query_var' ] );
 		add_filter( 'redirect_canonical', [ $this, 'maybe_disable_shop_slug_canonical_redirect' ], 10, 2 );
@@ -424,6 +425,20 @@ final class SMC_Quiz_Plugin {
 		}
 
 		return $show;
+	}
+
+	/**
+	 * Remove the WordPress admin bar search field on the frontend.
+	 */
+	public function remove_frontend_adminbar_search(): void {
+		if ( is_admin() ) {
+			return;
+		}
+
+		global $wp_admin_bar;
+		if ( is_object( $wp_admin_bar ) ) {
+			$wp_admin_bar->remove_node( 'search' );
+		}
 	}
 
 	/**
@@ -1044,8 +1059,15 @@ final class SMC_Quiz_Plugin {
      * Render the Instructor Hub Shortcode.
      */
     public function render_instructor_hub_shortcode( $atts ): string {
-        // Access Control: Only for users with 'edit_posts' capability
-        if ( ! current_user_can( 'edit_posts' ) ) {
+        // Access Control: Allow editor and administrator roles.
+        $user = wp_get_current_user();
+        $can_access_instructor_hub = $user instanceof \WP_User
+            && (
+                in_array( 'administrator', (array) $user->roles, true )
+                || in_array( 'editor', (array) $user->roles, true )
+            );
+
+        if ( ! $can_access_instructor_hub ) {
             return '<p>Access Denied. Instructor privileges required.</p>';
         }
 
@@ -1093,8 +1115,15 @@ final class SMC_Quiz_Plugin {
      * Render the Course Builder Shortcode.
      */
     public function render_course_builder_shortcode( $atts ): string {
-        // Access Control: Only for users with 'edit_posts' capability
-        if ( ! current_user_can( 'edit_posts' ) ) {
+        // Access Control: Allow editor and administrator roles.
+        $user = wp_get_current_user();
+        $can_access_instructor_hub = $user instanceof \WP_User
+            && (
+                in_array( 'administrator', (array) $user->roles, true )
+                || in_array( 'editor', (array) $user->roles, true )
+            );
+
+        if ( ! $can_access_instructor_hub ) {
             return '<p>Access Denied. Instructor privileges required.</p>';
         }
 

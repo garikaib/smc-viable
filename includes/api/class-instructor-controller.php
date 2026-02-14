@@ -307,7 +307,12 @@ class Instructor_Controller extends WP_REST_Controller {
 	 * Check permissions.
 	 */
 	public function permissions_check( $request ) {
-		return current_user_can( 'edit_posts' ); // Allow instructors/editors
+		$user = wp_get_current_user();
+		if ( ! ( $user instanceof \WP_User ) ) {
+			return false;
+		}
+
+		return in_array( 'administrator', (array) $user->roles, true ) || in_array( 'editor', (array) $user->roles, true );
 	}
 
 	/**
