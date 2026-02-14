@@ -21,7 +21,7 @@ class Hero_Seeder {
             if ( empty( $existing_title ) ) {
                 update_post_meta( $quiz->ID, '_smc_quiz_hero_title', 'Viability Assessment' );
                 update_post_meta( $quiz->ID, '_smc_quiz_hero_subtitle', 'Measure your business against world-class standards.' );
-                update_post_meta( $quiz->ID, '_smc_quiz_hero_bg', 'https://smc-wp.ddev.site/wp-content/uploads/2024/01/business-science-hero.jpg' ); // Placeholder or default
+                update_post_meta( $quiz->ID, '_smc_quiz_hero_bg', content_url( '/uploads/2024/01/business-science-hero.jpg' ) ); // Placeholder or default
             }
         }
     }

@@ -1,6 +1,6 @@
 import { __ } from '@wordpress/i18n';
 import { Button, TextControl, Spinner, Notice, TabPanel, TextareaControl, RadioControl, ToggleControl } from '@wordpress/components';
-import { useState, useEffect, useMemo, useCallback } from '@wordpress/element';
+import { useState, useEffect, useMemo, useCallback, useRef } from '@wordpress/element';
 import { ArrowLeft, Plus, Save, LoaderCircle, CheckCircle2, Clock3, LayoutPanelTop, SlidersHorizontal, ChartColumnIncreasing, Trash2, PlusCircle } from 'lucide-react';
 import { fetchQuiz, saveQuiz } from '../utils/api';
 import QuestionEditor from './QuestionEditor';
@@ -20,10 +20,30 @@ const PLAN_OPTIONS = Array.isArray(window.smcQuizSettings?.planTiers) && window.
         { label: 'Standard', value: 'standard' },
     ];
 
-export default function QuizEditor({ quizId, onBack }) {
+const DRAFT_VERSION = 1;
+const DRAFT_STORAGE_PREFIX = 'smc_quiz_editor_draft_v1';
+const MAX_DRAFT_AGE_MS = 1000 * 60 * 60 * 24 * 7;
+const getDraftStorageKey = (id) => `${DRAFT_STORAGE_PREFIX}:${id ? `quiz-${id}` : 'new'}`;
+
+const parseDraft = (raw) => {
+    if (!raw) return null;
+    try {
+        const parsed = JSON.parse(raw);
+        if (!parsed || parsed.version !== DRAFT_VERSION || typeof parsed !== 'object') return null;
+        const updatedAtMs = parsed.updatedAt ? new Date(parsed.updatedAt).getTime() : 0;
+        if (!updatedAtMs || Number.isNaN(updatedAtMs)) return null;
+        if (Date.now() - updatedAtMs > MAX_DRAFT_AGE_MS) return null;
+        return parsed;
+    } catch (_) {
+        return null;
+    }
+};
+
+export default function QuizEditor({ quizId, onBack, onPersistedQuiz }) {
     const [title, setTitle] = useState('');
     const [questions, setQuestions] = useState([]);
     const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
+    const [activeTabName, setActiveTabName] = useState('questions');
     const [settings, setSettings] = useState(DEFAULT_SETTINGS);
     const [stages, setStages] = useState(['Market & Offering', 'Business Model', 'Execution']);
     const [planLevel, setPlanLevel] = useState('free');
@@ -42,37 +62,108 @@ export default function QuizEditor({ quizId, onBack }) {
     const [lastSavedSnapshot, setLastSavedSnapshot] = useState(null);
     const [lastSavedAt, setLastSavedAt] = useState(null);
     const [notice, setNotice] = useState(null);
+    const draftHydratedRef = useRef(false);
+
+    const draftStorageKey = useMemo(() => getDraftStorageKey(quizId), [quizId]);
+
+    const applyHydratedState = useCallback((state) => {
+        if (!state || typeof state !== 'object') return;
+        if (typeof state.title === 'string') setTitle(state.title);
+        if (Array.isArray(state.questions)) setQuestions(state.questions);
+        if (Number.isInteger(state.activeQuestionIndex)) setActiveQuestionIndex(state.activeQuestionIndex);
+        if (typeof state.activeTabName === 'string') setActiveTabName(state.activeTabName);
+        if (state.settings && typeof state.settings === 'object') setSettings({ ...DEFAULT_SETTINGS, ...state.settings });
+        if (Array.isArray(state.stages) && state.stages.length > 0) setStages(state.stages);
+        if (typeof state.planLevel === 'string' && state.planLevel) setPlanLevel(state.planLevel);
+        if (state.shopSettings && typeof state.shopSettings === 'object') {
+            setShopSettings({
+                enabled: !!state.shopSettings.enabled,
+                access_mode: state.shopSettings.access_mode || 'standalone',
+                assigned_plan: state.shopSettings.assigned_plan || 'free',
+                price: state.shopSettings.price || 0,
+                features: Array.isArray(state.shopSettings.features) ? state.shopSettings.features : []
+            });
+        }
+        if (typeof state.dashboardTitle === 'string') setDashboardTitle(state.dashboardTitle || 'Assessment Results');
+        if (Array.isArray(state.dashboardRules)) setDashboardRules(state.dashboardRules);
+        if (typeof state.showJsonEditor === 'boolean') setShowJsonEditor(state.showJsonEditor);
+        if (typeof state.lastSavedSnapshot === 'string' || state.lastSavedSnapshot === null) setLastSavedSnapshot(state.lastSavedSnapshot);
+        if (state.lastSavedAt) {
+            const parsed = new Date(state.lastSavedAt);
+            setLastSavedAt(Number.isNaN(parsed.getTime()) ? null : parsed);
+        }
+    }, []);
 
     useEffect(() => {
-        if (!quizId) return;
+        draftHydratedRef.current = false;
+        setNotice(null);
+        setIsLoading(!!quizId);
+
+        const draft = parseDraft(window.localStorage.getItem(draftStorageKey));
+        const hasDraft = !!draft?.state;
+
+        if (hasDraft) {
+            applyHydratedState(draft.state);
+            draftHydratedRef.current = true;
+        } else if (!quizId) {
+            setTitle('');
+            setQuestions([]);
+            setActiveQuestionIndex(-1);
+            setActiveTabName('questions');
+            setSettings(DEFAULT_SETTINGS);
+            setStages(['Market & Offering', 'Business Model', 'Execution']);
+            setPlanLevel('free');
+            setShopSettings({
+                enabled: false,
+                access_mode: 'standalone',
+                assigned_plan: 'free',
+                price: 0,
+                features: []
+            });
+            setDashboardTitle('Assessment Results');
+            setDashboardRules([]);
+            setShowJsonEditor(false);
+            setLastSavedSnapshot(null);
+            setLastSavedAt(null);
+        }
+
+        if (!quizId) {
+            setIsLoading(false);
+            draftHydratedRef.current = true;
+            return;
+        }
+
         fetchQuiz(quizId)
             .then((data) => {
-                setTitle(data.title.rendered || '');
+                if (hasDraft) return;
                 const meta = data.meta || {};
                 const metaQuestions = meta._smc_quiz_questions || [];
                 const parsedQuestions = Array.isArray(metaQuestions) ? metaQuestions : [];
+
+                setTitle(data.title?.rendered || '');
                 setQuestions(parsedQuestions);
                 setActiveQuestionIndex(parsedQuestions.length ? 0 : -1);
-                if (meta._smc_quiz_settings) {
-                    const incomingSettings = typeof meta._smc_quiz_settings === 'object' && meta._smc_quiz_settings
-                        ? meta._smc_quiz_settings
-                        : {};
-                    setSettings({ ...DEFAULT_SETTINGS, ...incomingSettings });
-                }
-                if (meta._smc_quiz_stages && Array.isArray(meta._smc_quiz_stages) && meta._smc_quiz_stages.length > 0) {
-                    setStages(meta._smc_quiz_stages);
-                }
-                if (meta._smc_quiz_plan_level) setPlanLevel(meta._smc_quiz_plan_level);
-                if (meta._smc_quiz_shop) {
-                    const incoming = meta._smc_quiz_shop;
-                    setShopSettings({
-                        enabled: !!incoming.enabled,
-                        access_mode: incoming.access_mode || 'standalone',
-                        assigned_plan: incoming.assigned_plan || 'free',
-                        price: incoming.price || 0,
-                        features: Array.isArray(incoming.features) ? incoming.features : []
-                    });
-                }
+                setActiveTabName('questions');
+
+                const incomingSettings = typeof meta._smc_quiz_settings === 'object' && meta._smc_quiz_settings
+                    ? meta._smc_quiz_settings
+                    : {};
+                setSettings({ ...DEFAULT_SETTINGS, ...incomingSettings });
+
+                setStages(meta._smc_quiz_stages && Array.isArray(meta._smc_quiz_stages) && meta._smc_quiz_stages.length > 0
+                    ? meta._smc_quiz_stages
+                    : ['Market & Offering', 'Business Model', 'Execution']);
+                setPlanLevel(meta._smc_quiz_plan_level || 'free');
+
+                const incomingShop = meta._smc_quiz_shop || {};
+                setShopSettings({
+                    enabled: !!incomingShop.enabled,
+                    access_mode: incomingShop.access_mode || 'standalone',
+                    assigned_plan: incomingShop.assigned_plan || 'free',
+                    price: incomingShop.price || 0,
+                    features: Array.isArray(incomingShop.features) ? incomingShop.features : []
+                });
+
                 if (meta._smc_quiz_dashboard_config) {
                     try {
                         const conf = typeof meta._smc_quiz_dashboard_config === 'string'
@@ -81,15 +172,25 @@ export default function QuizEditor({ quizId, onBack }) {
                         if (conf && conf.dashboard_config) {
                             setDashboardTitle(conf.dashboard_config.title || 'Assessment Results');
                             setDashboardRules(conf.dashboard_config.rules || []);
+                        } else {
+                            setDashboardTitle('Assessment Results');
+                            setDashboardRules([]);
                         }
                     } catch (e) {
                         setNotice({ status: 'error', text: __('Failed to parse dashboard config.', 'smc-viable') });
                     }
+                } else {
+                    setDashboardTitle('Assessment Results');
+                    setDashboardRules([]);
                 }
+                setShowJsonEditor(false);
             })
             .catch((err) => setNotice({ status: 'error', text: err.message }))
-            .finally(() => setIsLoading(false));
-    }, [quizId]);
+            .finally(() => {
+                setIsLoading(false);
+                draftHydratedRef.current = true;
+            });
+    }, [applyHydratedState, draftStorageKey, quizId]);
 
     const savePayload = useMemo(() => {
         const fullDashboardConfig = {
@@ -118,6 +219,52 @@ export default function QuizEditor({ quizId, onBack }) {
         }
     }, [currentSnapshot, isLoading, lastSavedSnapshot]);
 
+    useEffect(() => {
+        if (isLoading || !draftHydratedRef.current) return;
+        const timer = setTimeout(() => {
+            const draftState = {
+                title,
+                questions,
+                activeQuestionIndex,
+                activeTabName,
+                settings,
+                stages,
+                planLevel,
+                shopSettings,
+                dashboardTitle,
+                dashboardRules,
+                showJsonEditor,
+                lastSavedSnapshot,
+                lastSavedAt: lastSavedAt ? lastSavedAt.toISOString() : null
+            };
+            try {
+                window.localStorage.setItem(
+                    draftStorageKey,
+                    JSON.stringify({ version: DRAFT_VERSION, updatedAt: new Date().toISOString(), state: draftState })
+                );
+            } catch (_) {
+                // ignore storage quota / privacy mode failures
+            }
+        }, 250);
+        return () => clearTimeout(timer);
+    }, [
+        isLoading,
+        draftStorageKey,
+        title,
+        questions,
+        activeQuestionIndex,
+        activeTabName,
+        settings,
+        stages,
+        planLevel,
+        shopSettings,
+        dashboardTitle,
+        dashboardRules,
+        showJsonEditor,
+        lastSavedSnapshot,
+        lastSavedAt
+    ]);
+
     const handleSave = useCallback(({ silent = false } = {}) => {
         if (isSaving) return;
         setIsSaving(true);
@@ -126,9 +273,14 @@ export default function QuizEditor({ quizId, onBack }) {
         }
 
         saveQuiz(savePayload)
-            .then(() => {
+            .then((saved) => {
                 setLastSavedSnapshot(currentSnapshot);
                 setLastSavedAt(new Date());
+                const savedId = Number(saved?.id || 0);
+                if (!quizId && savedId > 0 && typeof onPersistedQuiz === 'function') {
+                    const savedTitle = saved?.title?.rendered || title;
+                    onPersistedQuiz(savedId, { title: savedTitle });
+                }
                 if (!silent) {
                     setNotice({ status: 'success', text: __('Assessment saved successfully.', 'smc-viable') });
                 }
@@ -141,7 +293,7 @@ export default function QuizEditor({ quizId, onBack }) {
                 }
             })
             .finally(() => setIsSaving(false));
-    }, [isSaving, savePayload, currentSnapshot]);
+    }, [isSaving, savePayload, currentSnapshot, quizId, onPersistedQuiz, title]);
 
     useEffect(() => {
         if (!quizId || isLoading || isSaving || !isDirty) return;
@@ -227,6 +379,16 @@ export default function QuizEditor({ quizId, onBack }) {
     };
     const removeRule = (index) => setDashboardRules(dashboardRules.filter((_, i) => i !== index));
 
+    useEffect(() => {
+        if (!questions.length && activeQuestionIndex !== -1) {
+            setActiveQuestionIndex(-1);
+            return;
+        }
+        if (questions.length && (activeQuestionIndex < 0 || activeQuestionIndex >= questions.length)) {
+            setActiveQuestionIndex(0);
+        }
+    }, [questions, activeQuestionIndex]);
+
     if (isLoading) return <Spinner />;
 
     const activeQuestion = questions[activeQuestionIndex];
@@ -275,8 +437,11 @@ export default function QuizEditor({ quizId, onBack }) {
             />
 
             <TabPanel
+                key={`tabs-${quizId || 'new'}-${activeTabName}`}
                 className="my-tab-panel smc-editor-tabs"
                 activeClass="is-active"
+                initialTabName={activeTabName}
+                onSelect={(tab) => setActiveTabName(typeof tab === 'string' ? tab : (tab?.name || 'questions'))}
                 tabs={[
                     {
                         name: 'questions',
@@ -319,6 +484,7 @@ export default function QuizEditor({ quizId, onBack }) {
                                     <div className="smc-question-list">
                                         {questions.map((q, index) => (
                                             <button
+                                                type="button"
                                                 key={q.id || index}
                                                 className={`smc-question-pill ${index === activeQuestionIndex ? 'active' : ''}`}
                                                 onClick={() => setActiveQuestionIndex(index)}

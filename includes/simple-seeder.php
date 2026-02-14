@@ -22,7 +22,7 @@ $products = [
         'price' => 5,
         'type' => 'plan',
         'level' => 'basic',
-        'image' => 'https://smc-wp.ddev.site/wp-content/uploads/2026/02/my-networking-apparel-XgBJkn4Y0pM-unsplash.jpg',
+        'image' => site_url( '/wp-content/uploads/2026/02/my-networking-apparel-XgBJkn4Y0pM-unsplash.jpg' ),
         'features' => ['Basic Assessment Report', 'Access to Foundation Training', 'Monthly Business Tips']
     ],
     [
@@ -32,7 +32,7 @@ $products = [
         'price' => 10,
         'type' => 'plan',
         'level' => 'standard',
-        'image' => 'https://smc-wp.ddev.site/wp-content/uploads/2026/02/daniel-thomas-HA-0i0E7sq4-unsplash.jpg',
+        'image' => site_url( '/wp-content/uploads/2026/02/daniel-thomas-HA-0i0E7sq4-unsplash.jpg' ),
         'features' => ['Full Viability Report', 'All Advanced Training Modules', 'Priority Support', 'Quarterly Strategy Review', 'Downloadable Templates']
     ],
     // dummy products
@@ -43,7 +43,7 @@ $products = [
         'price' => 25, 
         'type' => 'single', 
         'level' => '',
-        'image' => 'https://smc-wp.ddev.site/wp-content/uploads/2026/02/ali-mkumbwa-EOkN2pRjFsg-unsplash.jpg',
+        'image' => site_url( '/wp-content/uploads/2026/02/ali-mkumbwa-EOkN2pRjFsg-unsplash.jpg' ),
         'features' => ['Legal Structures', 'Value Proposition Design', 'Operational Basics']
     ],
     [ 
@@ -53,7 +53,7 @@ $products = [
         'price' => 45, 
         'type' => 'single', 
         'level' => '',
-        'image' => 'https://smc-wp.ddev.site/wp-content/uploads/2026/02/nick-morrison-FHnnjk1Yj7Y-unsplash.jpg',
+        'image' => site_url( '/wp-content/uploads/2026/02/nick-morrison-FHnnjk1Yj7Y-unsplash.jpg' ),
         'features' => ['MVP Development', 'Build-Measure-Learn Loop', 'Pivot Strategies', 'Customer Validation']
     ],
     [ 
@@ -63,7 +63,7 @@ $products = [
         'price' => 30, 
         'type' => 'single', 
         'level' => '',
-        'image' => 'https://smc-wp.ddev.site/wp-content/uploads/2026/02/unseen-studio-s9CC2SKySJM-unsplash.jpg',
+        'image' => site_url( '/wp-content/uploads/2026/02/unseen-studio-s9CC2SKySJM-unsplash.jpg' ),
         'features' => ['Cash Flow Formatting', 'Projection Logic', 'Balance Sheet Basics']
     ],
     [ 
@@ -73,7 +73,7 @@ $products = [
         'price' => 50, 
         'type' => 'single', 
         'level' => '',
-        'image' => 'https://smc-wp.ddev.site/wp-content/uploads/2026/02/my-networking-apparel-XgBJkn4Y0pM-unsplash.jpg',
+        'image' => site_url( '/wp-content/uploads/2026/02/my-networking-apparel-XgBJkn4Y0pM-unsplash.jpg' ),
         'features' => ['Growth Hacking', 'Channel Optimization', 'Brand Positioning']
     ],
     // ... adding a few more for variety
@@ -84,7 +84,7 @@ $products = [
         'price' => 55, 
         'type' => 'single', 
         'level' => '',
-        'image' => 'https://smc-wp.ddev.site/wp-content/uploads/2026/02/daniel-thomas-HA-0i0E7sq4-unsplash.jpg',
+        'image' => site_url( '/wp-content/uploads/2026/02/daniel-thomas-HA-0i0E7sq4-unsplash.jpg' ),
         'features' => ['Emotional Intelligence', 'Team Motivation', 'Conflict Resolution']
     ],
     [ 
@@ -94,7 +94,7 @@ $products = [
         'price' => 48, 
         'type' => 'single', 
         'level' => '',
-        'image' => 'https://smc-wp.ddev.site/wp-content/uploads/2026/02/ali-mkumbwa-EOkN2pRjFsg-unsplash.jpg',
+        'image' => site_url( '/wp-content/uploads/2026/02/ali-mkumbwa-EOkN2pRjFsg-unsplash.jpg' ),
         'features' => ['KPI Tracking', 'Data Visualization', 'Decision Frameworks']
     ]
 ];

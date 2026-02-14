@@ -181,6 +181,10 @@ final class SMC_Quiz_Plugin {
 		$vars[] = 'smc_learning_course';
 		$vars[] = 'smc_account_action';
 		$vars[] = 'smc_account_order_id';
+		$vars[] = 'smc_view';
+		$vars[] = 'smc_quiz';
+		$vars[] = 'quiz_id';
+		$vars[] = 'smc_slug';
 		return $vars;
 	}
 
@@ -201,9 +205,22 @@ final class SMC_Quiz_Plugin {
 		if ( '' !== (string) get_query_var( 'smc_account_action', '' ) ) {
 			return false;
 		}
+		if ( '' !== (string) get_query_var( 'smc_view', '' ) ) {
+			return false;
+		}
+		if ( '' !== (string) get_query_var( 'smc_quiz', '' ) ) {
+			return false;
+		}
+		if ( '' !== (string) get_query_var( 'quiz_id', '' ) ) {
+			return false;
+		}
+		if ( '' !== (string) get_query_var( 'smc_slug', '' ) ) {
+			return false;
+		}
 
 		return $redirect_url;
 	}
+
 
 	/**
 	 * Build and register the rewrite rule for /shop/{product-slug}/.

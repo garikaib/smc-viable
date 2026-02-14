@@ -1,14 +1,14 @@
 import { Copy, Trash2 } from 'lucide-react';
 
 const QUESTION_TYPES = [
-    { label: 'Single Choice (Scored)', value: 'single_choice' },
-    { label: 'Multi Select (Partial Credit)', value: 'multi_select' },
-    { label: 'Numeric (Tolerance)', value: 'numeric' },
+    { label: 'Single Choice', value: 'single_choice' },
+    { label: 'Multi Select', value: 'multi_select' },
+    { label: 'Numeric', value: 'numeric' },
     { label: 'Ranking / Ordering', value: 'ranking' },
     { label: 'Matching Pairs', value: 'matching' },
     { label: 'Matrix True/False', value: 'matrix_true_false' },
-    { label: 'Short Text (Ungraded)', value: 'short_text' },
-    { label: 'Date Month (Ungraded)', value: 'date_month' }
+    { label: 'Short Text', value: 'short_text' },
+    { label: 'Date Month', value: 'date_month' }
 ];
 
 const LEADING_LANGUAGE = /(obviously|clearly|of course|best answer|you should select|correct answer is)/i;
@@ -443,4 +443,3 @@ export default function QuestionEditor({ question, onChange, onRemove, onClone, 
         </div>
     );
 }
-

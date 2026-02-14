@@ -197,7 +197,11 @@ export default function QuizList({ onEdit, onCreate }) {
                             </div>
 
                             <div className="smc-card-actions-row">
-                                <button type="button" className="smc-card-icon-btn smc-card-icon-btn--edit" onClick={() => onEdit(quiz.id)}>
+                                <button
+                                    type="button"
+                                    className="smc-card-icon-btn smc-card-icon-btn--edit"
+                                    onClick={() => onEdit(quiz.id, { title: quiz.title?.rendered || '' })}
+                                >
                                     <Pencil size={15} />
                                     <span>{__('Edit Assessment', 'smc-viable')}</span>
                                 </button>
