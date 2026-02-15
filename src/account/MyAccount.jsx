@@ -134,14 +134,6 @@ const MyAccount = () => {
                         </div>
                         <div className="header-meta">
                             <span className={`plan-badge ${planBadgeClass}`}>{data.plan?.label}</span>
-                            {data.user?.can_manage_assessments && (
-                                <a
-                                    className="smc-btn smc-btn-primary smc-btn-small assessment-builder-link"
-                                    href={data.user?.assessment_center_url || '/assessment-center/'}
-                                >
-                                    Quiz Builder
-                                </a>
-                            )}
                         </div>
                     </header>
 

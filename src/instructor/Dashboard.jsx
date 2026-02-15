@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from '@wordpress/element';
-import { Users, BookOpen, CheckCircle, TrendingUp, TrendingDown, Minus, Layout, UserCircle2 } from 'lucide-react';
+import { Users, BookOpen, CheckCircle, TrendingUp, TrendingDown, Minus, Layout, UserCircle2, ClipboardCheck } from 'lucide-react';
 import { gsap } from 'gsap';
 
 export default function Dashboard({ onOpenProfile }) {
@@ -83,7 +83,7 @@ export default function Dashboard({ onOpenProfile }) {
                     <div className="h-px flex-1 bg-gradient-to-r from-base-content/10 to-transparent"></div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     <a href="/course-builder/" className="group relative overflow-hidden rounded-3xl bg-base-200 border border-base-content/5 hover:border-teal-500/30 transition-all duration-500 shadow-md">
                         {/* Hover Gradient Background */}
                         <div className="absolute inset-0 bg-gradient-to-br from-teal-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -105,6 +105,27 @@ export default function Dashboard({ onOpenProfile }) {
 
                         {/* Decorative Blur */}
                         <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-teal-500/10 rounded-full blur-[80px] group-hover:bg-teal-500/20 transition-colors duration-500"></div>
+                    </a>
+
+                    <a href="/assessment-center/" className="group relative overflow-hidden rounded-3xl bg-base-200 border border-base-content/5 hover:border-amber-500/30 transition-all duration-500 shadow-md">
+                        <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
+                        <div className="relative p-10 z-10">
+                            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-6 text-amber-600 dark:text-amber-400 group-hover:scale-110 group-hover:bg-amber-500/20 transition-all duration-500">
+                                <ClipboardCheck size={28} />
+                            </div>
+
+                            <h4 className="text-2xl font-bold text-base-content mb-3">Quiz Builder</h4>
+                            <p className="text-base-content/60 mb-8 max-w-sm leading-relaxed">
+                                Build and manage assessments in the visual quiz builder workspace.
+                            </p>
+
+                            <div className="flex items-center text-amber-600 dark:text-amber-400 font-bold tracking-wide text-sm group-hover:translate-x-2 transition-transform duration-300">
+                                OPEN QUIZ BUILDER <Layout size={16} className="ml-2" />
+                            </div>
+                        </div>
+
+                        <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-amber-500/10 rounded-full blur-[80px] group-hover:bg-amber-500/20 transition-colors duration-500"></div>
                     </a>
 
                     <button

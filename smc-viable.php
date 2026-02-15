@@ -858,7 +858,7 @@ final class SMC_Quiz_Plugin {
 	 * Render assessment center (frontend quiz manager).
 	 */
 	public function render_assessment_center_shortcode( $atts ): string {
-		if ( ! current_user_can( 'edit_posts' ) ) {
+		if ( ! $this->current_user_is_instructor() ) {
 			return '<p>' . esc_html__( 'Assessment Center is restricted to authorized team members.', 'smc-viable' ) . '</p>';
 		}
 
@@ -1059,13 +1059,7 @@ final class SMC_Quiz_Plugin {
      * Render the Instructor Hub Shortcode.
      */
     public function render_instructor_hub_shortcode( $atts ): string {
-        // Access Control: Allow editor and administrator roles.
-        $user = wp_get_current_user();
-        $can_access_instructor_hub = $user instanceof \WP_User
-            && (
-                in_array( 'administrator', (array) $user->roles, true )
-                || in_array( 'editor', (array) $user->roles, true )
-            );
+        $can_access_instructor_hub = $this->current_user_is_instructor();
 
         if ( ! $can_access_instructor_hub ) {
             return '<p>Access Denied. Instructor privileges required.</p>';
@@ -1115,13 +1109,7 @@ final class SMC_Quiz_Plugin {
      * Render the Course Builder Shortcode.
      */
     public function render_course_builder_shortcode( $atts ): string {
-        // Access Control: Allow editor and administrator roles.
-        $user = wp_get_current_user();
-        $can_access_instructor_hub = $user instanceof \WP_User
-            && (
-                in_array( 'administrator', (array) $user->roles, true )
-                || in_array( 'editor', (array) $user->roles, true )
-            );
+        $can_access_instructor_hub = $this->current_user_is_instructor();
 
         if ( ! $can_access_instructor_hub ) {
             return '<p>Access Denied. Instructor privileges required.</p>';
@@ -1167,6 +1155,20 @@ final class SMC_Quiz_Plugin {
 
         return '<div id="smc-course-builder-root" class="smc-premium-layout">Loading Course Builder...</div>';
     }
+
+	/**
+	 * Determine whether the current user should be treated as an instructor.
+	 * By default, editors and administrators are instructors.
+	 */
+	private function current_user_is_instructor(): bool {
+		$user = wp_get_current_user();
+
+		return $user instanceof \WP_User
+			&& (
+				in_array( 'administrator', (array) $user->roles, true )
+				|| in_array( 'editor', (array) $user->roles, true )
+			);
+	}
 
     /**
      * Render Training List Shortcode.

@@ -83,7 +83,7 @@ class Account_Controller extends WP_REST_Controller {
 				'email'           => $user->user_email,
 				'avatar_url'      => get_avatar_url( $user->ID ),
 				'registered_date' => date( 'M Y', strtotime( $user->user_registered ) ),
-				'can_manage_assessments' => current_user_can( 'edit_posts' ),
+				'can_manage_assessments' => $this->current_user_is_instructor(),
 				'assessment_center_url' => $this->get_assessment_center_url(),
 			];
 
@@ -147,6 +147,19 @@ class Account_Controller extends WP_REST_Controller {
 			}
 		}
 		return home_url( '/assessment-center/' );
+	}
+
+	/**
+	 * By default, editors and administrators are considered instructors.
+	 */
+	private function current_user_is_instructor(): bool {
+		$user = wp_get_current_user();
+
+		return $user instanceof \WP_User
+			&& (
+				in_array( 'administrator', (array) $user->roles, true )
+				|| in_array( 'editor', (array) $user->roles, true )
+			);
 	}
 
 	/**

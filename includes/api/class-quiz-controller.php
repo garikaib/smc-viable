@@ -248,7 +248,7 @@ class Quiz_Controller extends WP_REST_Controller {
 	 * Check if a given request has access to get items.
 	 */
 	public function get_items_permissions_check( $request ) {
-		if ( ! current_user_can( 'edit_posts' ) ) {
+		if ( ! $this->current_user_is_instructor() ) {
 			return new WP_Error( 'rest_forbidden', __( 'Sorry, you are not allowed to view quizzes.', 'smc-viable' ), [ 'status' => 403 ] );
 		}
 		return true;
@@ -316,10 +316,23 @@ class Quiz_Controller extends WP_REST_Controller {
 	 * Check if a given request has access to create items.
 	 */
 	public function create_item_permissions_check( $request ) {
-		if ( ! current_user_can( 'edit_posts' ) ) {
+		if ( ! $this->current_user_is_instructor() ) {
 			return new WP_Error( 'rest_forbidden', __( 'Sorry, you are not allowed to create quizzes.', 'smc-viable' ), [ 'status' => 403 ] );
 		}
 		return true;
+	}
+
+	/**
+	 * By default, editors and administrators are considered instructors.
+	 */
+	private function current_user_is_instructor(): bool {
+		$user = wp_get_current_user();
+
+		return $user instanceof \WP_User
+			&& (
+				in_array( 'administrator', (array) $user->roles, true )
+				|| in_array( 'editor', (array) $user->roles, true )
+			);
 	}
 
 	/**

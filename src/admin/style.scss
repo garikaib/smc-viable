@@ -943,6 +943,21 @@
     background: color-mix(in srgb, var(--smc-admin-panel) 76%, #f6fafb 24%);
 }
 
+/* Choice row: label takes remaining space, score stays narrow */
+.smc-question-canvas .smc-choice-label {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    width: auto !important;
+}
+
+.smc-question-canvas .smc-choice-score {
+    width: 5rem !important;
+    max-width: 5rem !important;
+    min-width: 4rem !important;
+    flex: 0 0 5rem !important;
+    text-align: center !important;
+}
+
 .smc-editor-section h3 {
     margin-top: 1rem;
     margin-bottom: 0.5rem;
