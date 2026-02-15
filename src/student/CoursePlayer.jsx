@@ -4,6 +4,7 @@ import Sidebar from './Sidebar';
 import VideoRenderer from './VideoRenderer';
 import TextRenderer from './TextRenderer';
 import NotesSidebar from './NotesSidebar';
+import AnimatedLoader from '../components/AnimatedLoader';
 // styles are now consolidated in style.scss
 
 export default function CoursePlayer({ courseId, courseSlug, onExit }) {
@@ -120,7 +121,7 @@ export default function CoursePlayer({ courseId, courseSlug, onExit }) {
         }
     };
 
-    if (loading) return <div className="smc-loading">Loading Course...</div>;
+    if (loading) return <AnimatedLoader message="Loading course..." />;
     if (!structure) return <div className="smc-error">Course not found.</div>;
 
     const activeLesson = structure.sections

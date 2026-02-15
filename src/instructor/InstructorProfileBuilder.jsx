@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from '@wordpress/element';
 import { Save, UserCircle2 } from 'lucide-react';
+import AnimatedLoader from '../components/AnimatedLoader';
 
 const EMPTY_SOCIAL = {
     website: '',
@@ -161,7 +162,7 @@ export default function InstructorProfileBuilder() {
     };
 
     if (loading) {
-        return <div className="smc-loading">Loading instructor profile...</div>;
+        return <AnimatedLoader message="Loading instructor profile..." compact />;
     }
 
     return (

@@ -160,7 +160,11 @@ class Quiz_Grader {
 	 */
 	private static function grade_multi_select( array $question, $response ): array {
 		$choices = is_array( $question['choices'] ?? null ) ? $question['choices'] : [];
-		$max = self::sum_positive_choice_points( $choices );
+		$uncapped_max = self::sum_positive_choice_points( $choices );
+		$cap_raw = $question['grading']['cap_points'] ?? null;
+		$cap = is_numeric( $cap_raw ) ? (float) $cap_raw : null;
+		$has_cap = null !== $cap && $cap >= 0;
+		$max = $has_cap ? (float) $cap : $uncapped_max;
 
 		if ( ! is_array( $response ) ) {
 			return [ 'score' => 0.0, 'max' => $max ];
@@ -185,6 +189,9 @@ class Quiz_Grader {
 		$min = isset( $question['grading']['min_points'] ) ? (float) $question['grading']['min_points'] : 0.0;
 		if ( $score < $min ) {
 			$score = $min;
+		}
+		if ( $has_cap && $score > $cap ) {
+			$score = (float) $cap;
 		}
 
 		return [ 'score' => $score, 'max' => $max ];
@@ -413,4 +420,3 @@ class Quiz_Grader {
 		return $sum;
 	}
 }
-

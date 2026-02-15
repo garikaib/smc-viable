@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from '@wordpress/element';
 import { Users, BookOpen, CheckCircle, TrendingUp, TrendingDown, Minus, Layout, UserCircle2, ClipboardCheck } from 'lucide-react';
 import { gsap } from 'gsap';
+import AnimatedLoader from '../components/AnimatedLoader';
 
 export default function Dashboard({ onOpenProfile }) {
     const [stats, setStats] = useState(null);
@@ -22,7 +23,7 @@ export default function Dashboard({ onOpenProfile }) {
             });
     }, []);
 
-    if (!stats) return <div className="smc-loading">Loading stats...</div>;
+    if (!stats) return <AnimatedLoader message="Loading stats..." compact />;
 
     const trends = stats.trends || {};
     const statItems = [

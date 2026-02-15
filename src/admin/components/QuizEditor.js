@@ -1,5 +1,5 @@
 import { __ } from '@wordpress/i18n';
-import { Button, TextControl, Spinner, Notice, TabPanel, TextareaControl, RadioControl, ToggleControl } from '@wordpress/components';
+import { Button, TextControl, Spinner, TabPanel, TextareaControl, RadioControl, ToggleControl } from '@wordpress/components';
 import { useState, useEffect, useMemo, useCallback, useRef } from '@wordpress/element';
 import { ArrowLeft, Plus, Save, LoaderCircle, CheckCircle2, Clock3, LayoutPanelTop, SlidersHorizontal, ChartColumnIncreasing, Trash2, PlusCircle } from 'lucide-react';
 import { fetchQuiz, saveQuiz } from '../utils/api';
@@ -61,8 +61,11 @@ export default function QuizEditor({ quizId, onBack, onPersistedQuiz }) {
     const [isSaving, setIsSaving] = useState(false);
     const [lastSavedSnapshot, setLastSavedSnapshot] = useState(null);
     const [lastSavedAt, setLastSavedAt] = useState(null);
-    const [notice, setNotice] = useState(null);
+    const [toast, setToast] = useState(null);
+    const [draggingQuestionIndex, setDraggingQuestionIndex] = useState(-1);
+    const [dropTargetQuestionIndex, setDropTargetQuestionIndex] = useState(-1);
     const draftHydratedRef = useRef(false);
+    const toastTimerRef = useRef(null);
 
     const draftStorageKey = useMemo(() => getDraftStorageKey(quizId), [quizId]);
 
@@ -96,7 +99,7 @@ export default function QuizEditor({ quizId, onBack, onPersistedQuiz }) {
 
     useEffect(() => {
         draftHydratedRef.current = false;
-        setNotice(null);
+        setToast(null);
         setIsLoading(!!quizId);
 
         const draft = parseDraft(window.localStorage.getItem(draftStorageKey));
@@ -177,7 +180,7 @@ export default function QuizEditor({ quizId, onBack, onPersistedQuiz }) {
                             setDashboardRules([]);
                         }
                     } catch (e) {
-                        setNotice({ status: 'error', text: __('Failed to parse dashboard config.', 'smc-viable') });
+                        setToast({ status: 'error', text: __('Failed to parse dashboard config.', 'smc-viable') });
                     }
                 } else {
                     setDashboardTitle('Assessment Results');
@@ -185,12 +188,26 @@ export default function QuizEditor({ quizId, onBack, onPersistedQuiz }) {
                 }
                 setShowJsonEditor(false);
             })
-            .catch((err) => setNotice({ status: 'error', text: err.message }))
+            .catch((err) => setToast({ status: 'error', text: err.message }))
             .finally(() => {
                 setIsLoading(false);
                 draftHydratedRef.current = true;
             });
     }, [applyHydratedState, draftStorageKey, quizId]);
+
+    useEffect(() => {
+        if (!toast) return undefined;
+        if (toastTimerRef.current) {
+            clearTimeout(toastTimerRef.current);
+        }
+        toastTimerRef.current = setTimeout(() => setToast(null), 2800);
+        return () => {
+            if (toastTimerRef.current) {
+                clearTimeout(toastTimerRef.current);
+                toastTimerRef.current = null;
+            }
+        };
+    }, [toast]);
 
     const savePayload = useMemo(() => {
         const fullDashboardConfig = {
@@ -269,7 +286,7 @@ export default function QuizEditor({ quizId, onBack, onPersistedQuiz }) {
         if (isSaving) return;
         setIsSaving(true);
         if (!silent) {
-            setNotice(null);
+            setToast(null);
         }
 
         saveQuiz(savePayload)
@@ -282,14 +299,14 @@ export default function QuizEditor({ quizId, onBack, onPersistedQuiz }) {
                     onPersistedQuiz(savedId, { title: savedTitle });
                 }
                 if (!silent) {
-                    setNotice({ status: 'success', text: __('Assessment saved successfully.', 'smc-viable') });
+                    setToast({ status: 'success', text: __('Assessment saved successfully.', 'smc-viable') });
                 }
             })
             .catch((err) => {
                 if (silent) {
-                    setNotice({ status: 'error', text: __('Autosave failed. Please save manually.', 'smc-viable') });
+                    setToast({ status: 'error', text: __('Autosave failed. Please save manually.', 'smc-viable') });
                 } else {
-                    setNotice({ status: 'error', text: err.message });
+                    setToast({ status: 'error', text: err.message });
                 }
             })
             .finally(() => setIsSaving(false));
@@ -378,6 +395,48 @@ export default function QuizEditor({ quizId, onBack, onPersistedQuiz }) {
         setDashboardRules(next);
     };
     const removeRule = (index) => setDashboardRules(dashboardRules.filter((_, i) => i !== index));
+
+    const handleQuestionDragStart = (index) => {
+        setDraggingQuestionIndex(index);
+        setDropTargetQuestionIndex(index);
+    };
+
+    const handleQuestionDragOver = (event, index) => {
+        event.preventDefault();
+        if (dropTargetQuestionIndex !== index) {
+            setDropTargetQuestionIndex(index);
+        }
+    };
+
+    const handleQuestionDrop = (event, dropIndex) => {
+        event.preventDefault();
+
+        const fromIndex = draggingQuestionIndex;
+        if (fromIndex < 0 || dropIndex < 0 || fromIndex === dropIndex) {
+            setDraggingQuestionIndex(-1);
+            setDropTargetQuestionIndex(-1);
+            return;
+        }
+
+        const currentActiveQuestionId = questions[activeQuestionIndex]?.id;
+        const nextQuestions = [...questions];
+        const [movedQuestion] = nextQuestions.splice(fromIndex, 1);
+        nextQuestions.splice(dropIndex, 0, movedQuestion);
+        setQuestions(nextQuestions);
+
+        if (typeof currentActiveQuestionId !== 'undefined') {
+            const nextActiveIndex = nextQuestions.findIndex((question) => question?.id === currentActiveQuestionId);
+            setActiveQuestionIndex(nextActiveIndex >= 0 ? nextActiveIndex : 0);
+        }
+
+        setDraggingQuestionIndex(-1);
+        setDropTargetQuestionIndex(-1);
+    };
+
+    const handleQuestionDragEnd = () => {
+        setDraggingQuestionIndex(-1);
+        setDropTargetQuestionIndex(-1);
+    };
 
     useEffect(() => {
         if (!questions.length && activeQuestionIndex !== -1) {
@@ -486,8 +545,13 @@ export default function QuizEditor({ quizId, onBack, onPersistedQuiz }) {
                                             <button
                                                 type="button"
                                                 key={q.id || index}
-                                                className={`smc-question-pill ${index === activeQuestionIndex ? 'active' : ''}`}
+                                                className={`smc-question-pill ${index === activeQuestionIndex ? 'active' : ''} ${index === draggingQuestionIndex ? 'dragging' : ''} ${index === dropTargetQuestionIndex && index !== draggingQuestionIndex ? 'drop-target' : ''}`}
                                                 onClick={() => setActiveQuestionIndex(index)}
+                                                draggable
+                                                onDragStart={() => handleQuestionDragStart(index)}
+                                                onDragOver={(event) => handleQuestionDragOver(event, index)}
+                                                onDrop={(event) => handleQuestionDrop(event, index)}
+                                                onDragEnd={handleQuestionDragEnd}
                                             >
                                                 <strong>Q{index + 1}</strong>
                                                 <span>{q.text || __('Untitled question', 'smc-viable')}</span>
@@ -670,10 +734,10 @@ export default function QuizEditor({ quizId, onBack, onPersistedQuiz }) {
                 }}
             </TabPanel>
 
-            {notice && (
-                <Notice status={notice.status} onRemove={() => setNotice(null)} style={{ marginTop: '20px' }}>
-                    {notice.text}
-                </Notice>
+            {toast && (
+                <div className={`smc-copy-toast ${toast.status === 'error' ? 'is-error' : 'is-success'}`} role="status" aria-live="polite">
+                    {toast.text}
+                </div>
             )}
         </div>
     );

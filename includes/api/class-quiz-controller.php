@@ -562,10 +562,36 @@ class Quiz_Controller extends WP_REST_Controller {
 
 		$raw_answers = $params['answers'] ?? ( $incoming_score_data['answers'] ?? [] );
 		$answers = is_array( $raw_answers ) ? $raw_answers : [];
+		$incoming_score_data = $this->normalize_incoming_score_data( $incoming_score_data );
 
 		$quiz_questions_raw = get_post_meta( $quiz_id, '_smc_quiz_questions', true ) ?: [];
 		$quiz_questions = Quiz_Question_Schema::normalize_questions( $quiz_questions_raw );
 		$score_data = Quiz_Grader::grade( $quiz_questions, $answers );
+
+		$graded_total = isset( $score_data['total_score'] ) ? (int) $score_data['total_score'] : 0;
+		$incoming_total = isset( $incoming_score_data['total_score'] ) ? (int) $incoming_score_data['total_score'] : 0;
+		if ( $graded_total <= 0 && $incoming_total > 0 ) {
+			$score_data['total_score'] = $incoming_total;
+
+			if ( isset( $incoming_score_data['max_score'] ) ) {
+				$score_data['max_score'] = (int) $incoming_score_data['max_score'];
+			}
+
+			if ( isset( $incoming_score_data['scores_by_stage'] ) && is_array( $incoming_score_data['scores_by_stage'] ) ) {
+				$score_data['scores_by_stage'] = $incoming_score_data['scores_by_stage'];
+			}
+
+			if ( isset( $incoming_score_data['question_scores'] ) && is_array( $incoming_score_data['question_scores'] ) ) {
+				$score_data['question_scores'] = $incoming_score_data['question_scores'];
+			}
+		}
+
+		if ( empty( $answers ) && isset( $incoming_score_data['answers'] ) && is_array( $incoming_score_data['answers'] ) ) {
+			$answers = $incoming_score_data['answers'];
+		}
+		if ( ! empty( $answers ) ) {
+			$score_data['answers'] = $answers;
+		}
 
         $raw_settings = get_post_meta( $quiz_id, '_smc_quiz_settings', true );
         $quiz_settings = is_array( $raw_settings ) ? $raw_settings : [];
@@ -936,41 +962,87 @@ class Quiz_Controller extends WP_REST_Controller {
                 continue;
             }
 
-            $matched = false;
-            $operator = $logic['operator'] ?? 'gt';
-            if ( 'gt' === $operator ) {
-                $matched = $total_score > (int) ( $logic['value'] ?? 0 );
-            } elseif ( 'lt' === $operator ) {
-                $matched = $total_score < (int) ( $logic['value'] ?? 0 );
-            } elseif ( 'gte' === $operator ) {
-                $matched = $total_score >= (int) ( $logic['value'] ?? 0 );
-            } elseif ( 'lte' === $operator ) {
-                $matched = $total_score <= (int) ( $logic['value'] ?? 0 );
-            } elseif ( 'between' === $operator ) {
-                $matched = $total_score >= (int) ( $logic['min'] ?? 0 ) && $total_score <= (int) ( $logic['max'] ?? 0 );
-            }
+            $matched = $this->rule_matches_score( (float) $total_score, $logic );
 
             if ( ! $matched ) {
                 continue;
             }
 
-            $style_color = sanitize_key( (string) ( $rule['style']['color'] ?? '' ) );
-            $color_map = [
-                'green'       => '#0E7673',
-                'light-green' => '#2E9D8D',
-                'orange'      => '#D97706',
-                'red'         => '#A1232A',
-            ];
-
             return [
                 'title'   => (string) ( $rule['condition_text'] ?? $default['title'] ),
                 'message' => (string) ( $rule['message'] ?? $default['message'] ),
-                'color'   => $color_map[ $style_color ] ?? $default['color'],
+                'color'   => $this->resolve_rule_color( $rule['style']['color'] ?? '', $default['color'] ),
             ];
         }
 
         return $default;
     }
+
+	/**
+	 * Evaluate rule logic against score.
+	 *
+	 * @param float                $total_score Total score.
+	 * @param array<string, mixed> $logic       Rule logic payload.
+	 * @return bool
+	 */
+	private function rule_matches_score( float $total_score, array $logic ): bool {
+		$operator = sanitize_key( (string) ( $logic['operator'] ?? 'gt' ) );
+		$value = isset( $logic['value'] ) ? (float) $logic['value'] : 0.0;
+		$min = isset( $logic['min'] ) ? (float) $logic['min'] : 0.0;
+		$max = isset( $logic['max'] ) ? (float) $logic['max'] : 0.0;
+
+		if ( 'gt' === $operator ) {
+			return $total_score > $value;
+		}
+		if ( 'lt' === $operator ) {
+			return $total_score < $value;
+		}
+		if ( 'gte' === $operator ) {
+			return $total_score >= $value;
+		}
+		if ( 'lte' === $operator ) {
+			return $total_score <= $value;
+		}
+		if ( 'between' === $operator ) {
+			return $total_score >= $min && $total_score <= $max;
+		}
+		if ( 'eq' === $operator ) {
+			return abs( $total_score - $value ) < 0.00001;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Resolve configured rule color token/hex to hex string.
+	 *
+	 * @param mixed  $raw_color      Color token or hex.
+	 * @param string $fallback_color Fallback hex color.
+	 * @return string
+	 */
+	private function resolve_rule_color( $raw_color, string $fallback_color ): string {
+		$color = is_string( $raw_color ) ? trim( $raw_color ) : '';
+		if ( '' === $color ) {
+			return $fallback_color;
+		}
+
+		if ( preg_match( '/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/', $color ) ) {
+			return $color;
+		}
+
+		$token = sanitize_key( $color );
+		$map = [
+			'green'       => '#0E7673',
+			'light-green' => '#2E9D8D',
+			'lightgreen'  => '#2E9D8D',
+			'orange'      => '#D97706',
+			'red'         => '#A1232A',
+			'teal'        => '#0E7673',
+			'amber'       => '#D97706',
+		];
+
+		return $map[ $token ] ?? $fallback_color;
+	}
 
     /**
      * Extract scored red flags from score payload.
@@ -1043,6 +1115,68 @@ class Quiz_Controller extends WP_REST_Controller {
         return $summary;
     }
 
+	/**
+	 * Normalize score payloads coming from frontend clients (snake_case + camelCase).
+	 *
+	 * @param array<string, mixed> $incoming Raw incoming score payload.
+	 * @return array<string, mixed>
+	 */
+	private function normalize_incoming_score_data( array $incoming ): array {
+		$normalized = $incoming;
+
+		if ( ! isset( $normalized['total_score'] ) && isset( $normalized['totalScore'] ) ) {
+			$normalized['total_score'] = (int) $normalized['totalScore'];
+		}
+		if ( ! isset( $normalized['max_score'] ) ) {
+			if ( isset( $normalized['maxScore'] ) ) {
+				$normalized['max_score'] = (int) $normalized['maxScore'];
+			} elseif ( isset( $normalized['maxPossibleScore'] ) ) {
+				$normalized['max_score'] = (int) $normalized['maxPossibleScore'];
+			}
+		}
+		if ( ! isset( $normalized['scores_by_stage'] ) && isset( $normalized['scoresByStage'] ) && is_array( $normalized['scoresByStage'] ) ) {
+			$normalized['scores_by_stage'] = $normalized['scoresByStage'];
+		}
+		if ( ! isset( $normalized['question_scores'] ) && isset( $normalized['questionScores'] ) && is_array( $normalized['questionScores'] ) ) {
+			$normalized['question_scores'] = $normalized['questionScores'];
+		}
+
+		$normalized['total_score'] = isset( $normalized['total_score'] ) ? (int) $normalized['total_score'] : 0;
+		$normalized['max_score'] = isset( $normalized['max_score'] ) ? (int) $normalized['max_score'] : 0;
+
+		if ( ! isset( $normalized['scores_by_stage'] ) || ! is_array( $normalized['scores_by_stage'] ) ) {
+			$normalized['scores_by_stage'] = [];
+		}
+
+		foreach ( $normalized['scores_by_stage'] as $stage_name => $stage_data ) {
+			if ( ! is_array( $stage_data ) ) {
+				unset( $normalized['scores_by_stage'][ $stage_name ] );
+				continue;
+			}
+
+			$total = $stage_data['total'] ?? ( $stage_data['score'] ?? 0 );
+			$max = $stage_data['max'] ?? 0;
+			$flags = $stage_data['flags'] ?? 0;
+			$items = $stage_data['items'] ?? [];
+
+			$normalized['scores_by_stage'][ $stage_name ] = [
+				'total' => (float) $total,
+				'max'   => (float) $max,
+				'flags' => (int) $flags,
+				'items' => is_array( $items ) ? $items : [],
+			];
+		}
+
+		if ( ! isset( $normalized['question_scores'] ) || ! is_array( $normalized['question_scores'] ) ) {
+			$normalized['question_scores'] = [];
+		}
+		if ( ! isset( $normalized['answers'] ) || ! is_array( $normalized['answers'] ) ) {
+			$normalized['answers'] = [];
+		}
+
+		return $normalized;
+	}
+
     /**
      * Generate multi-page infographic PDF report with invoice-aligned visual language.
      */
@@ -1058,6 +1192,9 @@ class Quiz_Controller extends WP_REST_Controller {
         foreach ( $stage_summary as $stage ) {
             $total_possible += isset( $stage['max'] ) ? (int) $stage['max'] : 0;
         }
+		if ( $total_possible <= 0 ) {
+			$total_possible = isset( $score_data['max_score'] ) ? (int) $score_data['max_score'] : 0;
+		}
         $total_possible = max( 1, $total_possible );
         $percent = (int) round( ( $total_score / $total_possible ) * 100 );
 

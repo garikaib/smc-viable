@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from '@wordpress/element';
 import { BookOpen, TrendingUp, LogOut, ArrowRight, CheckCircle, Play, RotateCcw, Lock } from 'lucide-react';
 import { gsap } from 'gsap';
 import CoursePlayer from './CoursePlayer';
+import AnimatedLoader from '../components/AnimatedLoader';
 import './style.scss';
 
 export default function App() {
@@ -205,7 +206,7 @@ export default function App() {
 
             <main className="smc-student-content">
                 {loading ? (
-                    <div className="smc-loading">Curating your workspace...</div>
+                    <AnimatedLoader message="Curating your workspace..." />
                 ) : (
                     <>
                         <div className="smc-dashboard-intro mb-12 opacity-0 translate-y-4">

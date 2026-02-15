@@ -143,6 +143,16 @@ class Account_Documents {
 	 * Resolve a stable SMC logo URL.
 	 */
 	private static function resolve_logo_url(): string {
+		// 1. Try custom logo from theme
+		$custom_logo_id = get_theme_mod( 'custom_logo' );
+		if ( $custom_logo_id ) {
+			$logo_url = wp_get_attachment_image_url( $custom_logo_id, 'full' );
+			if ( $logo_url ) {
+				return $logo_url;
+			}
+		}
+
+		// 2. Try the candidates
 		$candidates = [
 			'wp-content/uploads/2026/01/smc_logo_cropped-1.png',
 			'wp-content/uploads/2025/12/SMC-logo-07-1.png',
@@ -151,7 +161,7 @@ class Account_Documents {
 		foreach ( $candidates as $relative ) {
 			$path = ABSPATH . ltrim( $relative, '/' );
 			if ( file_exists( $path ) ) {
-				return home_url( '/' . ltrim( $relative, '/' ) );
+				return content_url( ltrim( str_replace( 'wp-content/', '', $relative ), '/' ) );
 			}
 		}
 

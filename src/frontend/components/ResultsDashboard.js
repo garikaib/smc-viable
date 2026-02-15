@@ -47,11 +47,27 @@ export default function ResultsDashboard({ answers, quiz }) {
             if (operator === 'between') return totalScore >= min && totalScore <= max;
             if (operator === 'gte') return totalScore >= value;
             if (operator === 'lte') return totalScore <= value;
+            if (operator === 'eq') return Number(totalScore) === Number(value);
             return false;
         });
     }, [dashboardConfig, totalScore]);
 
     const percent = Math.round((totalScore / Math.max(1, maxPossibleScore)) * 100);
+
+    const resultColor = useMemo(() => {
+        const raw = matchingRule?.style?.color;
+        const map = {
+            green: '#0E7673',
+            'light-green': '#2E9D8D',
+            orange: '#D97706',
+            red: '#A1232A'
+        };
+        if (typeof raw === 'string') {
+            if (/^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(raw.trim())) return raw.trim();
+            if (map[raw]) return map[raw];
+        }
+        return percent >= 75 ? '#0E7673' : '#A1232A';
+    }, [matchingRule, percent]);
     const resultTitle = matchingRule ? matchingRule.condition_text : __('Overall Score', 'smc-viable');
     const resultMessage = matchingRule
         ? matchingRule.message
@@ -233,7 +249,7 @@ export default function ResultsDashboard({ answers, quiz }) {
 
             <div className="smc-score-grid">
                 <div className="score-card">
-                    <h3>{resultTitle}</h3>
+                    <h3 style={{ color: resultColor }}>{resultTitle}</h3>
                     <div className="score-ring">
                         <span>{percent}%</span>
                         <small>{totalScore} / {maxPossibleScore}</small>

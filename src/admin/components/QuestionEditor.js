@@ -197,6 +197,44 @@ export default function QuestionEditor({ question, onChange, onRemove, onClone, 
             <div className="mt-2">
                 <button className="btn btn-sm btn-secondary btn-outline" onClick={addChoice}>+ Add Choice</button>
             </div>
+            {safeQuestion.type === 'multi_select' && (
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div>
+                        <label className="label">
+                            <span className="label-text">Maximum Score Cap (Optional)</span>
+                        </label>
+                        <input
+                            type="number"
+                            className="input input-bordered input-sm w-full"
+                            value={safeQuestion.grading?.cap_points ?? ''}
+                            onChange={(e) => {
+                                const raw = e.target.value;
+                                updateQuestion('grading', {
+                                    ...safeQuestion.grading,
+                                    cap_points: raw === '' ? null : Number(raw),
+                                });
+                            }}
+                            min="0"
+                            placeholder="No cap"
+                        />
+                        <p className="text-xs opacity-70 mt-1">
+                            Limits total points from selected options to prevent score inflation.
+                        </p>
+                    </div>
+                    <div>
+                        <label className="label">
+                            <span className="label-text">Minimum Score Floor (Optional)</span>
+                        </label>
+                        <input
+                            type="number"
+                            className="input input-bordered input-sm w-full"
+                            value={safeQuestion.grading?.min_points ?? 0}
+                            onChange={(e) => updateQuestion('grading', { ...safeQuestion.grading, min_points: Number(e.target.value || 0) })}
+                            placeholder="0"
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 

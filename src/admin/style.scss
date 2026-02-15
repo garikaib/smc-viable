@@ -528,6 +528,16 @@
     animation: smc-toast-in 220ms ease;
 }
 
+.smc-copy-toast.is-success {
+    border-color: color-mix(in srgb, #2fbf71 40%, rgba(255, 255, 255, 0.18));
+    background: color-mix(in srgb, #17352a 86%, #0f1c24 14%);
+}
+
+.smc-copy-toast.is-error {
+    border-color: color-mix(in srgb, #d33c4a 45%, rgba(255, 255, 255, 0.18));
+    background: color-mix(in srgb, #3f171b 86%, #0f1c24 14%);
+}
+
 .smc-card-btn--edit:hover {
     filter: brightness(1.05);
     box-shadow: 0 14px 30px color-mix(in srgb, var(--smc-admin-teal) 40%, transparent) !important;
@@ -837,6 +847,18 @@
     transform: translateY(-1px);
     border-color: color-mix(in srgb, var(--smc-admin-teal) 30%, transparent);
     box-shadow: 0 8px 16px rgba(7, 24, 37, 0.08);
+}
+
+.smc-question-pill.dragging {
+    opacity: 0.55;
+    transform: scale(0.98);
+    cursor: grabbing;
+}
+
+.smc-question-pill.drop-target {
+    border-color: color-mix(in srgb, var(--smc-admin-teal) 62%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--smc-admin-teal) 24%, transparent);
+    background: color-mix(in srgb, var(--smc-admin-teal) 10%, #ffffff 90%);
 }
 
 .smc-question-pill strong {

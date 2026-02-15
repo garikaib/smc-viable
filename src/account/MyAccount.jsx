@@ -5,6 +5,7 @@ import Identity from './components/Identity';
 import Learning from './components/Learning';
 import Billing from './components/Billing';
 import Assessments from './components/Assessments';
+import AnimatedLoader from '../components/AnimatedLoader';
 
 const MyAccount = () => {
     const [activeTab, setActiveTab] = useState('overview');
@@ -84,7 +85,7 @@ const MyAccount = () => {
             <div className="smc-my-account-page">
                 <div className="smc-container">
                     <div className="smc-dashboard-card smc-state-card">
-                        <div className="card-loading">Loading your dashboard...</div>
+                        <AnimatedLoader message="Loading your dashboard..." compact />
                     </div>
                 </div>
             </div>

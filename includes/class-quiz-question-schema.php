@@ -339,9 +339,10 @@ class Quiz_Question_Schema {
 	private static function normalize_grading( array $grading, string $type, array $choices ): array {
 		$max_points = isset( $grading['max_points'] ) && is_numeric( $grading['max_points'] ) ? (float) $grading['max_points'] : 0.0;
 		$min_points = isset( $grading['min_points'] ) && is_numeric( $grading['min_points'] ) ? (float) $grading['min_points'] : 0.0;
+		$cap_points = isset( $grading['cap_points'] ) && is_numeric( $grading['cap_points'] ) ? (float) $grading['cap_points'] : null;
 		$mode       = isset( $grading['mode'] ) ? sanitize_key( (string) $grading['mode'] ) : 'auto';
 
-		if ( in_array( $type, [ 'single_choice', 'multi_select' ], true ) ) {
+		if ( 'single_choice' === $type ) {
 			$choice_points = array_map(
 				static function ( array $choice ): float {
 					return isset( $choice['points'] ) ? (float) $choice['points'] : 0.0;
@@ -350,6 +351,21 @@ class Quiz_Question_Schema {
 			);
 			$max_points = max( $max_points, empty( $choice_points ) ? 0.0 : max( array_filter( $choice_points, static fn( float $n ): bool => $n > 0 ) ?: [ 0.0 ] ) );
 			$min_points = min( $min_points, empty( $choice_points ) ? 0.0 : min( array_filter( $choice_points, static fn( float $n ): bool => $n < 0 ) ?: [ 0.0 ] ) );
+		}
+		if ( 'multi_select' === $type ) {
+			$choice_points = array_map(
+				static function ( array $choice ): float {
+					return isset( $choice['points'] ) ? (float) $choice['points'] : 0.0;
+				},
+				$choices
+			);
+			$max_points = max( $max_points, empty( $choice_points ) ? 0.0 : array_sum( array_filter( $choice_points, static fn( float $n ): bool => $n > 0 ) ) );
+			$min_points = min( $min_points, empty( $choice_points ) ? 0.0 : min( array_filter( $choice_points, static fn( float $n ): bool => $n < 0 ) ?: [ 0.0 ] ) );
+			if ( null !== $cap_points ) {
+				$cap_points = max( 0.0, $cap_points );
+			}
+		} else {
+			$cap_points = null;
 		}
 
 		if ( in_array( $type, [ 'numeric', 'ranking', 'matching', 'matrix_true_false' ], true ) ) {
@@ -372,7 +388,7 @@ class Quiz_Question_Schema {
 			'mode'       => $mode,
 			'max_points' => $max_points,
 			'min_points' => $min_points,
+			'cap_points' => $cap_points,
 		];
 	}
 }
-

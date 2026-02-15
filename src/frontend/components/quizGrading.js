@@ -50,13 +50,20 @@ const gradeQuestion = (question, response) => {
 
     if (type === 'multi_select') {
         const choices = getChoices(question);
-        const max = choices.filter((choice) => Number(choice?.points || 0) > 0).reduce((sum, choice) => sum + Number(choice.points || 0), 0);
+        const uncappedMax = choices.filter((choice) => Number(choice?.points || 0) > 0).reduce((sum, choice) => sum + Number(choice.points || 0), 0);
+        const capRaw = question?.grading?.cap_points;
+        const cap = Number(capRaw);
+        const hasCap = capRaw !== '' && capRaw !== null && capRaw !== undefined && !Number.isNaN(cap) && cap >= 0;
+        const max = hasCap ? cap : uncappedMax;
         const selected = Array.isArray(response) ? response.map(String) : [];
         let score = 0;
         choices.forEach((choice) => {
             const isSelected = selected.includes(`${choice?.id}`) || selected.includes(`${choice?.label}`);
             if (isSelected) score += Number(choice?.points || 0);
         });
+        const min = Number(question?.grading?.min_points ?? 0);
+        if (!Number.isNaN(min) && score < min) score = min;
+        if (hasCap && score > cap) score = cap;
         return { score, max };
     }
 

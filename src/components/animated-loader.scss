@@ -1,0 +1,72 @@
+.smc-animated-loader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.85rem;
+    min-height: clamp(130px, 20vh, 220px);
+    text-align: center;
+    color: color-mix(in srgb, var(--fallback-bc, #111827) 72%, #0e7673 28%);
+}
+
+.smc-animated-loader.is-compact {
+    min-height: 88px;
+    gap: 0.7rem;
+}
+
+.smc-animated-loader.is-red {
+    color: color-mix(in srgb, var(--fallback-bc, #111827) 68%, #a1232a 32%);
+}
+
+.smc-animated-loader.is-gold {
+    color: color-mix(in srgb, var(--fallback-bc, #111827) 68%, #d48900 32%);
+}
+
+.smc-animated-loader__visual {
+    position: relative;
+    width: 72px;
+    height: 72px;
+    display: grid;
+    place-items: center;
+}
+
+.smc-animated-loader.is-compact .smc-animated-loader__visual {
+    width: 60px;
+    height: 60px;
+}
+
+.smc-animated-loader__ring {
+    width: 100%;
+    height: 100%;
+    border-radius: 999px;
+    border: 2px solid color-mix(in srgb, currentColor 24%, transparent);
+    border-top-color: color-mix(in srgb, currentColor 76%, transparent);
+}
+
+.smc-animated-loader__dots {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.smc-animated-loader__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: currentColor;
+    opacity: 0.9;
+}
+
+.smc-animated-loader.is-compact .smc-animated-loader__dot {
+    width: 7px;
+    height: 7px;
+}
+
+.smc-animated-loader__message {
+    font-size: 0.77rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-weight: 800;
+    color: color-mix(in srgb, currentColor 88%, var(--fallback-bc, #111827) 12%);
+}

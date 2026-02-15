@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo, useRef } from '@wordpress/element';
-import { Button, Spinner, TextControl } from '@wordpress/components';
+import { Button, TextControl } from '@wordpress/components';
 import apiFetch from '@wordpress/api-fetch';
 import { __ } from '@wordpress/i18n';
 import { ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import gsap from 'gsap';
 import ResultsDashboard from './ResultsDashboard';
+import AnimatedLoader from '../../components/AnimatedLoader';
 
 import './style.scss';
 
@@ -140,7 +141,7 @@ export default function QuizRunner({ quizId }) {
         window.scrollTo(0, 0);
     };
 
-    if (loading) return <div className="p-12 text-center text-gray-500"><Spinner /></div>;
+    if (loading) return <AnimatedLoader message="Preparing assessment..." tone="gold" />;
     if (!quiz || !currentStage) return <p className="text-error">{__('Quiz not found or empty.', 'smc-viable')}</p>;
 
     if (isSubmitted) {
